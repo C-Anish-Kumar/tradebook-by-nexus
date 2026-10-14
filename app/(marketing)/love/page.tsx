@@ -40,7 +40,8 @@ const PRAISE: Praise[] = [
 type WallItem = { name: string; url: string; label: string; logo?: string; iconOnly?: boolean; avatar?: string };
 
 const WALL: WallItem[] = [
-    ...[...ACTIVE_SPONSORS, ...PREVIOUS_SPONSORS].map((s) => ({ name: s.name, url: s.url, logo: s.logo, iconOnly: s.iconOnly, label: s.period ? `Sponsor · ${s.period}` : 'Sponsor' })),
+    ...ACTIVE_SPONSORS.map((s) => ({ name: s.name, url: s.url, logo: s.logo, iconOnly: s.iconOnly, label: 'Sponsor' })),
+    ...PREVIOUS_SPONSORS.map((s) => ({ name: s.name, url: s.url, logo: s.logo, iconOnly: s.iconOnly, label: s.period ? `Past sponsor · ${s.period}` : 'Past sponsor' })),
     ...SUPPORTERS.map((s) => ({ name: s.name, url: `https://github.com/${s.login}`, avatar: `https://github.com/${s.login}.png?size=64`, label: 'Supporter' })),
 ];
 
