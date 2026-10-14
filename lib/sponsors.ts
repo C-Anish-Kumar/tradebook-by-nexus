@@ -53,10 +53,18 @@ export const SPONSOR_TIERS: {
 
 export const ACTIVE_SPONSORS: Sponsor[] = [
     { name: 'Orbit', url: 'https://github.com/diip3sh/orbit', logo: '/assets/icons/orbit.png', iconOnly: true, tier: 'partner', blurb: 'Free, open-source screen recorder and video editor for macOS.' },
+    { name: 'Atlas Cloud', url: 'https://www.atlascloud.ai', logo: '/assets/icons/atlascloud.svg', tier: 'partner', blurb: 'One API for 400+ AI models across chat, image, video and audio.' },
 ];
 
 export const PREVIOUS_SPONSORS: Sponsor[] = [
     { name: 'Siray.ai', url: 'https://www.siray.ai', logo: '/assets/icons/siray.svg', period: '2026' },
+];
+
+// People who sponsored publicly on GitHub (private sponsors stay anonymous). Avatars come from GitHub.
+export const SUPPORTERS: { name: string; login: string }[] = [
+    { name: 'Jonas Gunklach', login: 'jonasgunklach' },
+    { name: 'Dan Sellars', login: 'xlab-nyc' },
+    { name: 'Mangolito', login: 'Mangolito' },
 ];
 
 // Counted from GitHub Sponsors; individual sponsors stay anonymous unless they sponsor publicly.

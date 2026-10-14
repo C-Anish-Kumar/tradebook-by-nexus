@@ -13,6 +13,7 @@ const FOOTER_LINKS = [
     { href: '/api-docs', label: 'Architecture' },
     { href: '/terms', label: 'Terms' },
     { href: '/sponsor', label: 'Sponsor' },
+    { href: '/love', label: 'Wall of love' },
     { href: REPO_URL, label: 'GitHub' },
     { href: DISCORD_URL, label: 'Discord' },
     { href: 'https://www.linkedin.com/company/opendevsociety-in/', label: 'LinkedIn' },
