@@ -32,7 +32,7 @@ Any other `TRADINGAGENTS_*` variable from TradingAgents works too (another provi
 Docker Spaces need a paid plan, but a Gradio Space runs any `app.py`, so the service installs as a package
 there and serves its own API on port 7860.
 
-1. https://huggingface.co/new-space → SDK **Gradio**, template **Blank**, hardware **CPU basic (free)**.
+1. https://huggingface.co/new-space → SDK **Gradio** (or **Docker**, using [`space/Dockerfile`](space/Dockerfile) as its only file), template **Blank**, hardware **CPU basic (free)**.
 2. Replace the Space's `README.md`, `app.py` and `requirements.txt` with the files in [`space/`](space/)
    (**Files → Add file → Create a new file**, or edit each file in the browser). The README sets
    `python_version: "3.12"`, which TradingAgents needs.
