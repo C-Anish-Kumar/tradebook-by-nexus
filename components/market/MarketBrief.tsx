@@ -39,7 +39,11 @@ export default function MarketBrief({ brief }: { brief: Brief }) {
             </div>
 
             {brief.watch && <p className="text-[13px]"><span className="font-semibold">Watch next: </span><span className="text-muted-foreground">{brief.watch}</span></p>}
-            <p className="text-[12px] text-faint">Written by AI from live quotes and headlines. It can get things wrong; not financial advice.</p>
+            <p className="text-[12px] text-faint">
+                {brief.ai === false
+                    ? 'The AI summary is unavailable right now, so this shows the moves only. It refreshes before the open, at midday and after the close.'
+                    : 'Written by AI from live quotes and headlines. It can get things wrong; not financial advice.'}
+            </p>
         </div>
     );
 }

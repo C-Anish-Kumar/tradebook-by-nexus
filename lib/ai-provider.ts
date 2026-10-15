@@ -56,7 +56,8 @@ export function getProviderConfig(
         apiKey: process.env.GEMINI_API_KEY || "",
         baseUrl:
           "https://generativelanguage.googleapis.com/v1beta/models",
-        model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite",
+        // Same default as the analyst service; older ids fall back in callGemini
+        model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
       };
   }
 }
@@ -79,30 +80,44 @@ export function getFallbackProviderName(
 
 // ── Provider call implementations ──────────────────────────────────
 
+// Tried in order when a model id is retired (404), so a Google deprecation doesn't silently break AI text
+const GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite"];
+const AI_TIMEOUT_MS = 45_000;
+
 async function callGemini(
   prompt: string,
   config: AIProviderConfig
 ): Promise<string> {
   if (!config.apiKey) throw new Error("GEMINI_API_KEY is not set");
 
-  const url = `${config.baseUrl}/${config.model}:generateContent?key=${config.apiKey}`;
+  const models = [...new Set([config.model, ...GEMINI_FALLBACK_MODELS])];
+  let lastError = "";
+  for (const model of models) {
+    const res = await fetch(`${config.baseUrl}/${model}:generateContent`, {
+      method: "POST",
+      // Key in a header keeps it out of URLs and logs
+      headers: { "Content-Type": "application/json", "x-goog-api-key": config.apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      }),
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+    });
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-    }),
-  });
+    if (res.status === 404) {
+      lastError = `model ${model} not found`;
+      continue;
+    }
+    if (!res.ok) {
+      const detail = typeof res.text === "function" ? await res.text().catch(() => "") : "";
+      throw new Error(`Gemini API error: ${res.status} ${res.statusText ?? ""} (${model}) ${detail.slice(0, 300)}`.trim());
+    }
 
-  if (!res.ok) {
-    throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error(`Gemini returned empty response (${model})`);
+    return text;
   }
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini returned empty response");
-  return text;
+  throw new Error(`Gemini: ${lastError}; set GEMINI_MODEL to a current model id`);
 }
 
 async function callOpenAICompatible(
@@ -119,6 +134,7 @@ async function callOpenAICompatible(
 
   const res = await fetch(url, {
     method: "POST",
+    signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.apiKey}`,
@@ -177,10 +193,17 @@ export async function callAIProviderWithFallback(
   try {
     return await callAIProvider(prompt, primaryName);
   } catch (primaryError) {
-    console.error(
-      `⚠️ ${primaryName} failed, switching to ${fallbackName} fallback`,
-      primaryError
-    );
-    return await callAIProvider(prompt, fallbackName);
+    const reason = primaryError instanceof Error ? primaryError.message : String(primaryError);
+    // Only fall back to a provider that is actually configured, and never hide the primary's error
+    if (!getProviderConfig(fallbackName).apiKey) {
+      throw new Error(`${primaryName} failed: ${reason} (no ${fallbackName} key configured as a fallback)`);
+    }
+    console.error(`⚠️ ${primaryName} failed, switching to ${fallbackName} fallback:`, reason);
+    try {
+      return await callAIProvider(prompt, fallbackName);
+    } catch (fallbackError) {
+      const why = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+      throw new Error(`${primaryName} failed: ${reason}; ${fallbackName} failed: ${why}`);
+    }
   }
 }

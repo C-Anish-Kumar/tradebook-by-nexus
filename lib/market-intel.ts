@@ -256,6 +256,9 @@ export type MarketBrief = {
     moves: { symbol: string; label: string; change: number }[];
     session: 'open' | 'closed';
     generatedAt: string;
+    // False when the AI provider failed and only the moves are shown; aiError says why
+    ai?: boolean;
+    aiError?: string;
 };
 
 function parseJson(text: string) {
@@ -294,8 +297,31 @@ ${headlines || '(none available)'}
 Reply with JSON only, no markdown:
 {"headline": "max 12 words", "summary": "2 plain sentences", "bullets": [{"title": "max 5 words", "detail": "1 sentence"}, ... 3 or 4 items], "watch": "1 sentence on what to watch next, or empty string"}`;
 
-    const parsed = parseJson(await callAIProviderWithFallback(prompt));
-    if (!parsed?.headline || !parsed?.summary) throw new Error('The model returned an unusable brief');
+    let parsed: { headline?: unknown; summary?: unknown; bullets?: unknown; watch?: unknown } | null = null;
+    let aiError: string | undefined;
+    try {
+        parsed = parseJson(await callAIProviderWithFallback(prompt));
+        if (!parsed?.headline || !parsed?.summary) throw new Error('The model returned an unusable brief');
+    } catch (error) {
+        aiError = error instanceof Error ? error.message : String(error);
+        console.error('market brief: AI unavailable, saving moves only:', aiError);
+    }
+    if (!parsed || aiError) {
+        // Still useful without AI: a plain-numbers headline from the index and sector moves
+        const fmt = (m: { label: string; change: number }) => `${m.label} ${m.change > 0 ? '+' : ''}${m.change.toFixed(2)}%`;
+        const sectors = moves.slice(4, 15).sort((x, y) => y.change - x.change);
+        return {
+            headline: moves.slice(0, 2).map(fmt).join(', '),
+            summary: sectors.length ? `${sectors[0].label} led (${fmt(sectors[0]).split(' ').pop()}) and ${sectors.at(-1)!.label} lagged (${fmt(sectors.at(-1)!).split(' ').pop()}).` : '',
+            bullets: [],
+            watch: '',
+            moves,
+            session,
+            generatedAt: new Date().toISOString(),
+            ai: false,
+            aiError,
+        };
+    }
     return {
         headline: String(parsed.headline),
         summary: String(parsed.summary),
@@ -304,6 +330,7 @@ Reply with JSON only, no markdown:
         moves,
         session,
         generatedAt: new Date().toISOString(),
+        ai: true,
     };
 }
 
@@ -311,5 +338,6 @@ export const getMarketBrief = () => cached('market:brief', 8 * HOUR, generateMar
 export const refreshMarketBrief = async () => {
     const value = await generateMarketBrief();
     await writeCache('market:brief', value);
-    return value.headline;
+    // Shown in Inngest so a broken AI key is visible instead of silent
+    return value.ai ? value.headline : { headline: value.headline, aiError: value.aiError };
 };

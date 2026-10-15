@@ -21,7 +21,7 @@ describe("getProviderConfig", () => {
     const config = getProviderConfig();
     expect(config.name).toBe("gemini");
     expect(config.baseUrl).toContain("generativelanguage.googleapis.com");
-    expect(config.model).toBe("gemini-2.5-flash-lite");
+    expect(config.model).toBe("gemini-3.5-flash-lite");
   });
 
   it("returns minimax config when provider is minimax", () => {
@@ -150,7 +150,9 @@ describe("callAIProvider", () => {
 
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain("generativelanguage.googleapis.com");
-    expect(url).toContain("key=test-gemini-key");
+    // The key travels in a header, never the URL
+    expect(url).not.toContain("test-gemini-key");
+    expect(options.headers["x-goog-api-key"]).toBe("test-gemini-key");
     const body = JSON.parse(options.body);
     expect(body.contents[0].parts[0].text).toBe("test prompt");
   });
@@ -364,5 +366,39 @@ describe("callAIProviderWithFallback", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(callAIProviderWithFallback("test")).rejects.toThrow();
     consoleSpy.mockRestore();
+  });
+
+  it("reports the primary's error when no fallback key is configured", async () => {
+    delete process.env.AI_PROVIDER;
+    process.env.GEMINI_API_KEY = "g";
+    delete process.env.MINIMAX_API_KEY;
+    delete process.env.SIRAY_API_KEY;
+
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 403, statusText: "Forbidden" });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await expect(callAIProviderWithFallback("test")).rejects.toThrow(/gemini failed: Gemini API error: 403/);
+    expect(mockFetch).toHaveBeenCalledTimes(1); // no pointless call to an unconfigured provider
+  });
+});
+
+describe("Gemini model fallback", () => {
+  const originalEnv = { ...process.env };
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("tries the next model when one is retired (404)", async () => {
+    process.env.GEMINI_API_KEY = "g";
+    process.env.GEMINI_MODEL = "gemini-old-model";
+    const mockFetch = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(url.includes("gemini-old-model")
+        ? { ok: false, status: 404, statusText: "Not Found" }
+        : { ok: true, json: () => Promise.resolve({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }) })
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    await expect(callAIProvider("test", "gemini")).resolves.toBe("ok");
+    expect(mockFetch.mock.calls[1][0]).toContain("gemini-3.5-flash-lite");
   });
 });

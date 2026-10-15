@@ -22,6 +22,6 @@ export const refreshMarketData = inngest.createFunction(
 
 // AI brief before the open, at midday and after the close (New York time, weekdays)
 export const writeMarketBrief = inngest.createFunction(
-    { id: 'write-market-brief', concurrency: 1, triggers: [{ event: 'app/market.brief' }, { cron: 'TZ=America/New_York 50 8,12,16 * * 1-5' }] },
+    { id: 'write-market-brief', concurrency: 1, retries: 1, triggers: [{ event: 'app/market.brief' }, { cron: 'TZ=America/New_York 50 8,12,16 * * 1-5' }] },
     async ({ step }) => step.run('generate', () => refreshMarketBrief()),
 );
