@@ -5,6 +5,7 @@ import StockHeader, { StockHeaderSkeleton } from "@/components/stocks/StockHeade
 import StockSentimentCard from "@/components/stocks/StockSentimentCard";
 import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import StrategyPanel from "@/components/stocks/StrategyPanel";
+import BacktestPanel from "@/components/stocks/BacktestPanel";
 import Panel from "@/components/Panel";
 import {
     CANDLE_CHART_WIDGET_CONFIG,
@@ -44,9 +45,14 @@ async function Strategy({ symbol }: { symbol: string }) {
     const signals = await getStrategySignals(symbol);
     if (!signals) return null;
     return (
-        <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
-            <StrategyPanel signals={signals} />
-        </Panel>
+        <>
+            <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+                <StrategyPanel signals={signals} />
+            </Panel>
+            <Panel title="Backtest" sub="How these rules would have traded this stock">
+                <BacktestPanel symbol={symbol} />
+            </Panel>
+        </>
     );
 }
 

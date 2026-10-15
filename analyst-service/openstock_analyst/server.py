@@ -28,6 +28,7 @@ from tradingagents.default_config import build_default_config  # noqa: E402
 from tradingagents.graph.trading_graph import TradingAgentsGraph  # noqa: E402
 from tradingagents.reporting import write_report_tree  # noqa: E402
 
+from openstock_analyst.backtest import run as run_backtest  # noqa: E402
 from openstock_analyst.strategy import evaluate  # noqa: E402
 
 API_KEY = os.environ.get("ANALYST_API_KEY", "")
@@ -146,6 +147,32 @@ def get_signals(ticker: str):
     weekly = history.history(period="5y", interval="1wk", auto_adjust=False)
     result = {"ticker": ticker, **evaluate(daily, weekly)}
     signal_cache[ticker] = (time.time(), result)
+    return result
+
+
+BACKTEST_TTL_SECONDS = 6 * 60 * 60
+backtest_cache: dict[tuple[str, int], tuple[float, dict]] = {}
+
+
+@app.get("/backtest/{ticker}", dependencies=[Depends(require_key)])
+def get_backtest(ticker: str, years: int = 5):
+    """Replay the strategy over the last `years` of daily candles, cached for 6 hours."""
+    ticker = ticker.strip().upper()
+    if not TICKER_PATTERN.match(ticker):
+        raise HTTPException(status_code=422, detail="Invalid ticker")
+    years = max(1, min(years, 10))
+    key = (ticker, years)
+    cached = backtest_cache.get(key)
+    if cached and time.time() - cached[0] < BACKTEST_TTL_SECONDS:
+        return cached[1]
+
+    import yfinance as yf
+
+    daily = yf.Ticker(ticker).history(period=f"{years}y", interval="1d", auto_adjust=False)
+    if len(daily) < 250:
+        raise HTTPException(status_code=404, detail="Not enough price history to backtest")
+    result = {"ticker": ticker, "years": years, **run_backtest(daily)}
+    backtest_cache[key] = (time.time(), result)
     return result
 
 

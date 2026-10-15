@@ -14,6 +14,7 @@ All routes except `/` need the `X-Analyst-Key` header.
 | `POST /analyses` `{"ticker": "AAPL", "date": "2026-10-15"}` | queues a run, returns `{"id", "status"}` |
 | `GET /analyses/{id}` | `status` is `queued`, `running`, `done` (with `rating`, `report_html`, `report_md`) or `error` |
 | `GET /signals/{ticker}` | 10/21 EMA + Supertrend (10,3) checklist on daily Yahoo Finance candles, cached 15 minutes |
+| `GET /backtest/{ticker}?years=5` | Replays the strategy over 1–10 years (next-open fills, 0.1% cost per side) with stats, weekly equity vs buy & hold and every trade, cached 6 hours |
 
 Jobs live in memory for 24 hours; one run at a time by default (`ANALYST_CONCURRENCY`).
 

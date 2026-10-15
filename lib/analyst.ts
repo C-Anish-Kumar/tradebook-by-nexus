@@ -71,3 +71,37 @@ export async function getStrategySignals(ticker: string): Promise<StrategySignal
         return null;
     }
 }
+
+export type BacktestTrade = {
+    entry_date: string; entry_price: number; exit_date: string; return_pct: number; pnl: number;
+    r_multiple: number; bars: number;
+    log: { date: string; side: 'buy' | 'sell'; shares: number; price: number; reason: string }[];
+};
+export type BacktestResult = {
+    ticker: string; years: number; start: string; end: string;
+    stats: {
+        total_return_pct: number; cagr_pct: number; max_drawdown_pct: number;
+        buy_hold_return_pct: number; buy_hold_max_drawdown_pct: number;
+        trades: number; win_rate_pct: number | null; avg_win_pct: number | null; avg_loss_pct: number | null;
+        profit_factor: number | null; avg_r: number | null; exposure_pct: number;
+    };
+    equity: { date: string; strategy: number; buy_hold: number }[];
+    trades: BacktestTrade[];
+    open_trade: { entry_date: string; entry_price: number; quarters_held: number; stop: number } | null;
+    assumptions: { start_equity: number; cost_per_side_pct: number; fills: string };
+};
+
+// Replays the strategy on the analyst service; results are cached there and here for 6 hours
+export async function getBacktest(ticker: string, years: number): Promise<BacktestResult> {
+    if (!analystEnabled) throw new Error('The analyst service is not configured');
+    const headers: Record<string, string> = { 'X-Analyst-Key': API_KEY! };
+    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
+    const res = await fetch(`${SERVICE_URL}/backtest/${encodeURIComponent(ticker)}?years=${years}`, {
+        headers,
+        next: { revalidate: 6 * 60 * 60 },
+        signal: AbortSignal.timeout(90_000),
+    });
+    if (res.status === 404) throw new Error('Not enough price history to backtest this stock');
+    if (!res.ok) throw new Error(`Backtest failed (${res.status})`);
+    return res.json() as Promise<BacktestResult>;
+}
