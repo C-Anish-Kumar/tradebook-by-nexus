@@ -8,7 +8,6 @@ import { signInWithEmail } from "@/lib/actions/auth.actions";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import OpenDevSocietyBranding from "@/components/OpenDevSocietyBranding";
 import SocialAuthButtons from "@/components/forms/SocialAuthButtons";
 import React from "react";
 
@@ -88,7 +87,6 @@ const SignIn = () => {
                 </Button>
 
                 <FooterLink text="Don't have an account?" linkText="Create an account" href="/sign-up" />
-                <OpenDevSocietyBranding outerClassName="mt-10 flex justify-center" />
             </form>
         </>
     );

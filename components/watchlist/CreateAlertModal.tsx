@@ -118,16 +118,15 @@ export default function CreateAlertModal({ symbol, currentPrice, currency = 'USD
                         </form>
                     </>
                 ) : (
-                    // Alerts are an OpenStock Cloud feature; the free hourly site points people to it
+                    // Alerts only run in realtime mode; in cached (hourly) mode they are off
                     <div>
-                        <p className="kicker text-brand-ink">OpenStock Cloud</p>
-                        <DialogTitle className="mt-1 text-xl font-bold tracking-tight">Price alerts come with Cloud</DialogTitle>
+                        <p className="kicker text-brand-ink">Price alerts</p>
+                        <DialogTitle className="mt-1 text-xl font-bold tracking-tight">Alerts are turned off here</DialogTitle>
                         <DialogDescription className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
-                            Cloud adds email price alerts and live quotes for $5 a month. It’s coming soon. Self-hosting includes both today.
+                            This server refreshes prices hourly, which is too slow for alerts. Set NEXT_PUBLIC_OPENSTOCK_DATA_MODE=realtime to turn them on.
                         </DialogDescription>
                         <div className="mt-5 flex gap-2">
-                            <Link href="/#data" className="btn btn-primary h-11 flex-1">See OpenStock Cloud</Link>
-                            <Link href="/#self-host" className="btn btn-ghost h-11">Self-host</Link>
+                            <Link href="/#self-host" className="btn btn-ghost h-11 flex-1">How to turn them on</Link>
                         </div>
                     </div>
                 )}

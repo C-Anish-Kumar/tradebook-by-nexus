@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import FooterLink from '@/components/forms/FooterLink';
 import InputField from '@/components/forms/InputField';
 import PasswordRequirements from '@/components/forms/PasswordRequirements';
-import OpenDevSocietyBranding from '@/components/OpenDevSocietyBranding';
 import { Button } from '@/components/ui/button';
 import { resetPasswordWithToken } from '@/lib/actions/auth.actions';
 import { PASSWORD_VALIDATION } from '@/lib/constants';
@@ -111,7 +110,6 @@ const ResetPasswordForm = () => {
                 </Button>
 
                 <FooterLink text="Need a fresh link?" linkText="Request another one" href="/forgot-password" />
-                <OpenDevSocietyBranding outerClassName="mt-10 flex justify-center" />
             </form>
         </>
     );

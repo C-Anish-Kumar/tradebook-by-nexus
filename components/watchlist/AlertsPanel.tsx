@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BellRing, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,9 +47,8 @@ export default function AlertsPanel({ alerts }: { alerts: AlertRow[] }) {
         return (
             <div className="empty-state py-10">
                 <span className="empty-icon"><BellRing className="size-5" /></span>
-                <h3>Alerts come with Cloud</h3>
-                <p className="max-w-64 text-[13px]">Email price alerts are part of OpenStock Cloud, $5 a month and coming soon.</p>
-                <Link href="/#data" className="btn btn-ghost mt-2">See OpenStock Cloud</Link>
+                <h3>Alerts are turned off</h3>
+                <p className="max-w-64 text-[13px]">Email price alerts need realtime mode, which this server doesn’t use.</p>
             </div>
         );
     }
@@ -69,7 +67,7 @@ export default function AlertsPanel({ alerts }: { alerts: AlertRow[] }) {
         <>
             {!alertsEnabled && (
                 <p className="px-3 pt-3 pb-1 text-[12.5px] text-faint">
-                    Alerts moved to <Link href="/#data" className="text-brand-ink hover:underline">OpenStock Cloud</Link>, so these are paused.
+                    Price alerts are turned off on this server, so these are paused.
                 </p>
             )}
             <ul className="row-list">

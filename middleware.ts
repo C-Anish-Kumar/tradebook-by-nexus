@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionCookie } from "better-auth/cookies";
 
-const PUBLIC_PATHS = new Set(['/', '/about', '/help', '/terms', '/api-docs', '/sponsor', '/love']);
+const PUBLIC_PATHS = new Set(['/', '/about', '/help', '/terms', '/api-docs']);
 
 export async function middleware(request: NextRequest) {
     // The marketing site is public

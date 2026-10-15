@@ -22,7 +22,7 @@ function friendlyError(error?: string) {
     if (/429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(raw)) return 'Gemini’s rate limit was hit. Try again in a few minutes.';
     if (/no longer has this job|restarted/i.test(raw)) return 'The AI service restarted during the run. Please run it again.';
     if (/took too long/i.test(raw)) return 'The analysis took too long and was stopped. Please try again.';
-    if (/Analyst service 401/.test(raw)) return 'OpenStock and the AI service have different ANALYST_API_KEY values.';
+    if (/Analyst service 401/.test(raw)) return 'Tradebook and the AI service have different ANALYST_API_KEY values.';
     return 'Something went wrong while analysing. Please try again.';
 }
 

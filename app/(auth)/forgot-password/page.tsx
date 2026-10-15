@@ -6,7 +6,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import InputField from '@/components/forms/InputField';
 import FooterLink from '@/components/forms/FooterLink';
-import OpenDevSocietyBranding from '@/components/OpenDevSocietyBranding';
 import { requestPasswordResetEmail } from '@/lib/actions/auth.actions';
 
 type ForgotPasswordFormData = {
@@ -72,7 +71,6 @@ const ForgotPasswordPage = () => {
                 </Button>
 
                 <FooterLink text="Remembered it?" linkText="Sign in" href="/sign-in" />
-                <OpenDevSocietyBranding outerClassName="mt-10 flex justify-center" />
             </form>
         </>
     );

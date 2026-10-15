@@ -1,17 +1,18 @@
-import { BarChart2, Clock, Mail, UserX } from 'lucide-react';
+import { BarChart2, Bot, Clock, Mail, UserX } from 'lucide-react';
 import PageHero from '@/components/marketing/PageHero';
 import SectionHead from '@/components/marketing/SectionHead';
 import IconCard from '@/components/marketing/IconCard';
 import { REPO_URL } from '@/lib/constants';
+import { BRAND_FULL } from '@/lib/brand';
 
 export const metadata = {
-    title: 'Architecture | OpenStock',
-    description: 'How OpenStock works: market data, background jobs and the AI behind the emails.',
+    title: `Architecture | ${BRAND_FULL}`,
+    description: `How ${BRAND_FULL} works: market data, background jobs, the AI analyst and the AI behind the emails.`,
 };
 
 const DATA_MODES = [
     { name: 'Cached', cadence: 'Hourly', body: 'Default for the public site. Quotes are fetched once an hour and shared by every user, so cost grows with symbols, not people.' },
-    { name: 'Realtime', cadence: 'Every 15 seconds', body: 'For OpenStock Cloud and self-hosting. Set NEXT_PUBLIC_OPENSTOCK_DATA_MODE=realtime and on-screen prices refresh live and email price alerts turn on.' },
+    { name: 'Realtime', cadence: 'Every 15 seconds', body: 'What this site runs. Set NEXT_PUBLIC_OPENSTOCK_DATA_MODE=realtime and on-screen prices refresh live and email price alerts turn on.' },
 ];
 
 const COVERAGE = [
@@ -24,6 +25,7 @@ const COVERAGE = [
 const FLOW = ['A user signs up, or a cron fires', 'Inngest runs the function', 'Gemini writes the text', 'MiniMax takes over if Gemini fails', 'The email goes out'];
 
 const JOBS = [
+    { icon: Bot, title: 'AI analysis', trigger: 'On request', body: 'Starts a TradingAgents run on the analyst service, checks on it every 30 seconds and saves the rating and report.' },
     { icon: Mail, title: 'Welcome email', trigger: 'On sign-up', body: 'An AI-written intro tailored to the country, goal, risk and industry picked at sign-up.' },
     { icon: BarChart2, title: 'Weekly news', trigger: 'Mon 09:00', body: 'Summarises the week’s market news and sends it as a Kit broadcast.' },
     { icon: Clock, title: 'Price alerts', trigger: 'Every 5 min', body: 'Checks every active alert against Finnhub quotes and emails the owner when one fires. Realtime mode only.' },
@@ -35,7 +37,8 @@ const STACK = [
     ['TradingView', 'Charts, heatmaps, technicals and market widgets, embedded live.', 'https://www.tradingview.com/widget/'],
     ['Inngest', 'Background jobs and schedules, with retries.', 'https://www.inngest.com'],
     ['Better Auth', 'Email, Google and GitHub sign-in with MongoDB sessions.', 'https://www.better-auth.com'],
-    ['MongoDB Atlas', 'Users, watchlists and alerts.', 'https://www.mongodb.com/atlas'],
+    ['MongoDB Atlas', 'Users, watchlists, alerts and saved analyses.', 'https://www.mongodb.com/atlas'],
+    ['TradingAgents', 'Multi-agent LLM research behind the AI analyst, on a Hugging Face Space.', 'https://github.com/TauricResearch/TradingAgents'],
     ['Kit', 'Newsletter broadcasts for the weekly digest.', 'https://kit.com'],
 ];
 
@@ -44,7 +47,7 @@ export default function ArchitecturePage() {
         <>
             <PageHero
                 kicker="Architecture"
-                title="How OpenStock works."
+                title={`How ${BRAND_FULL} works.`}
                 sub="A transparent look at the event-driven, multi-provider system behind your market data and emails."
             >
                 <span className="pill h-8 px-3">v1.0.0</span>

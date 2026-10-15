@@ -6,7 +6,7 @@
 /*
  * Design language: dashboard-craft (floated shell, dark chrome, browser tabs,
  * hatch shells, bento tiles) in a dark warm workspace.
- * Two hues carry everything: neutral hue 95 (warm) and accent hue 176 (OpenStock teal).
+ * Two hues carry everything: neutral hue 95 (warm) and accent hue 176 (brand teal).
  * Up/down share one lightness (0.70) and chroma % so neither shouts louder.
  */
 :root {

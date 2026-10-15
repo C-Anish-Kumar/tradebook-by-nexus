@@ -1,4 +1,4 @@
-// Markets OpenStock can show for free. Coverage was tested against the free data sources:
+// Markets Tradebook can show for free. Coverage was tested against the free data sources:
 //   - Finnhub free: US stocks and crypto only (every other exchange returns 403).
 //   - TradingView embeds: US, crypto, forex live; TSX + ASX delayed; BSE + XETRA end-of-day.
 //     NSE and TVC indices (NIFTY, FTSE, DAX, N225, HSI) are blocked in embeds; LSE, Tokyo, Hong Kong and

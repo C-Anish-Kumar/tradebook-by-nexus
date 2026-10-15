@@ -6,6 +6,6 @@ import { runAnalysis } from "@/lib/inngest/analysis";
 
 export const { GET, POST, PUT } = serve({
     client: inngest,
-    // Price alerts are an OpenStock Cloud feature, so the checker only runs where they are on
+    // The alert checker only runs where price alerts are turned on (realtime mode)
     functions: [sendSignUpEmail, sendWeeklyNewsSummary, checkInactiveUsers, runAnalysis, ...(alertsEnabled ? [checkStockAlerts] : [])],
 })

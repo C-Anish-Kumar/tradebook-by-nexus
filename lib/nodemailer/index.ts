@@ -53,10 +53,10 @@ export const sendWelcomeEmail = async ({ email, name, intro }: WelcomeEmailData)
             .replace('{{intro}}', intro);
 
         const mailOptions = {
-            from: `"Openstock" <${process.env.NODEMAILER_EMAIL}>`,
+            from: `"Tradebook by Nexus" <${process.env.NODEMAILER_EMAIL}>`,
             to: email,
-            subject: `Welcome to Openstock - your open-source stock market toolkit!`,
-            text: 'Thanks for joining Openstock, an initiative by open dev society',
+            subject: `Welcome to Tradebook by Nexus - your stock market toolkit`,
+            text: 'Thanks for joining Tradebook by Nexus',
             html: htmlTemplate,
         };
 
@@ -83,10 +83,10 @@ export const sendNewsSummaryEmail = async (
             .replace('{{newsContent}}', newsContent);
 
         const mailOptions = {
-            from: `"Openstock" <${process.env.NODEMAILER_EMAIL}>`,
+            from: `"Tradebook by Nexus" <${process.env.NODEMAILER_EMAIL}>`,
             to: email,
             subject: `📈 Market News Summary Today - ${date}`,
-            text: `Today's market news summary from Openstock`,
+            text: `Today's market news summary from Tradebook`,
             html: htmlTemplate,
         };
 
@@ -122,7 +122,7 @@ export const sendStockAlertEmail = async (
             .replaceAll('{{timestamp}}', new Date().toUTCString());
 
         const mailOptions = {
-            from: `"Openstock" <${process.env.NODEMAILER_EMAIL}>`,
+            from: `"Tradebook by Nexus" <${process.env.NODEMAILER_EMAIL}>`,
             to: email,
             subject: `🔔 Price Alert: ${symbol} is ${isUpper ? 'above' : 'below'} ${money(targetPrice)}`,
             text: `${symbol} is now ${money(currentPrice)}, ${isUpper ? 'above' : 'below'} your target of ${money(targetPrice)}.`,

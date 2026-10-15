@@ -1,8 +1,8 @@
-# AI Analyst service
+# AI Analyst service (Tradebook by Nexus)
 
-Runs [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Apache-2.0) for OpenStock's
+Runs [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Apache-2.0) for Tradebook's
 **AI Analyst** panel. A run takes 5–15 minutes and dozens of LLM calls, which is longer than a Vercel
-function can live, so this service runs on its own host and OpenStock polls it through Inngest.
+function can live, so this service runs on its own host and Tradebook polls it through Inngest.
 
 ## API
 
@@ -20,7 +20,7 @@ Jobs live in memory for 24 hours; one run at a time by default (`ANALYST_CONCURR
 
 | Variable | |
 |---|---|
-| `ANALYST_API_KEY` | shared secret; OpenStock sends the same value |
+| `ANALYST_API_KEY` | shared secret; Tradebook sends the same value |
 | `GOOGLE_API_KEY` | Gemini key from https://aistudio.google.com/apikey |
 | `TRADINGAGENTS_QUICK_THINK_LLM` | optional, default `gemini-3.5-flash-lite` |
 | `TRADINGAGENTS_DEEP_THINK_LLM` | optional, default `gemini-3.8-flash` |

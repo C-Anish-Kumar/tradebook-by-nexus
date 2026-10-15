@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import {Toaster} from "@/components/ui/sonner";
-import OntoLaunchCard from "@/components/OntoLaunchCard";
+import { BRAND_FULL } from "@/lib/brand";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -17,8 +17,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpenStock",
-  description: "OpenStock is an open-source alternative to expensive market platforms. Track real-time prices, set personalized alerts, and explore detailed company insights — built openly, for everyone, forever free.",
+  title: BRAND_FULL,
+  description: `${BRAND_FULL} is a free market terminal: live prices, watchlists, price alerts, company insights and an AI analyst team that rates any stock.`,
 };
 
 export default function RootLayout({
@@ -33,7 +33,6 @@ export default function RootLayout({
             >
                 {children}
                 <Toaster/>
-                <OntoLaunchCard />
                 <Analytics />
             </body>
         </html>

@@ -1,4 +1,4 @@
-"""HTTP wrapper around TradingAgents for OpenStock.
+"""HTTP wrapper around TradingAgents for Tradebook by Nexus.
 
 A run takes minutes, so POST /analyses queues it and returns a job id; the caller
 polls GET /analyses/{id}. Jobs live in memory: a restart loses runs in flight,
@@ -37,7 +37,7 @@ executor = ThreadPoolExecutor(max_workers=int(os.environ.get("ANALYST_CONCURRENC
 jobs: dict[str, dict] = {}
 jobs_lock = threading.Lock()
 
-app = FastAPI(title="OpenStock AI Analyst")
+app = FastAPI(title="Tradebook AI Analyst")
 
 
 def require_key(x_analyst_key: str = Header(default="")):

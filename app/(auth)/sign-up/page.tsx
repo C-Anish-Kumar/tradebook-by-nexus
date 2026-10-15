@@ -11,7 +11,6 @@ import FooterLink from "@/components/forms/FooterLink";
 import { signUpWithEmail } from "@/lib/actions/auth.actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import OpenDevSocietyBranding from "@/components/OpenDevSocietyBranding";
 import SocialAuthButtons from "@/components/forms/SocialAuthButtons";
 import React from "react";
 
@@ -124,8 +123,6 @@ const SignUp = () => {
                     </Button>
                     <FooterLink text="Already have an account?" linkText="Sign in" href="/sign-in" />
                 </div>
-
-                <OpenDevSocietyBranding outerClassName="flex justify-center" />
             </form>
         </>
     )
