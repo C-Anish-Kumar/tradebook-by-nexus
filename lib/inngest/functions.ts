@@ -1,11 +1,12 @@
 import { inngest } from "@/lib/inngest/client";
 import { NEWS_SUMMARY_EMAIL_PROMPT, PERSONALIZED_WELCOME_EMAIL_PROMPT } from "@/lib/inngest/prompts";
-import { sendNewsSummaryEmail, sendStockAlertEmail, sendWelcomeEmail } from "@/lib/nodemailer";
-import { getAllUsersForNewsEmail, getWatchlistSymbolsByEmail } from "@/lib/actions/user.actions";
-import { getNews } from "@/lib/actions/finnhub.actions";
-import { getFormattedTodayDate } from "@/lib/utils";
+import { sendStockAlertEmail, sendWelcomeEmail } from "@/lib/nodemailer";
 import { callAIProviderWithFallback } from "@/lib/ai-provider";
 import { APP_URL } from "@/lib/brand";
+
+type KitSubscriber = { state?: string; email_address?: string; first_name?: string };
+// The fields the alert checker reads (Inngest serialises step results, so ids arrive as strings)
+type ActiveAlert = { _id: string; userId: string; symbol: string; condition: 'ABOVE' | 'BELOW'; targetPrice: number };
 
 export const sendSignUpEmail = inngest.createFunction(
     { id: 'sign-up-email', triggers: [{ event: 'app/user.created' }] },
@@ -95,7 +96,7 @@ export const sendWeeklyNewsSummary = inngest.createFunction(
             try {
                 const subData = await kit.listSubscribers();
                 const subscriberList = subData.subscribers || [];
-                const confirmedCount = subscriberList.filter((s: any) => s.state === 'active').length;
+                const confirmedCount = subscriberList.filter((s: KitSubscriber) => s.state === 'active').length;
 
                 console.log(`📋 Target Audience: Found ${subData.total_subscribers} total subscribers in Kit.`);
                 console.log(`✅ Confirmed (Active) Subscribers receiving email: ${confirmedCount}`);
@@ -103,7 +104,7 @@ export const sendWeeklyNewsSummary = inngest.createFunction(
                 // Log names/emails for the user to see in Inngest dashboard
                 if (subscriberList.length > 0) {
                     console.log('--- Recipient List ---');
-                    subscriberList.forEach((s: any) => {
+                    subscriberList.forEach((s: KitSubscriber) => {
                         console.log(`${s.email_address} (${s.first_name || 'No Name'}) - Status: ${s.state}`);
                     });
                     console.log('----------------------');
@@ -228,7 +229,7 @@ export const checkStockAlerts = inngest.createFunction(
         }
 
         // Step 2: Group by symbol
-        const symbols = [...new Set(activeAlerts.map((a: any) => a.symbol))];
+        const symbols = [...new Set((activeAlerts as unknown as ActiveAlert[]).map((a) => a.symbol))];
 
         // Step 3: Fetch prices
         const prices = await step.run('fetch-prices', async () => {
@@ -250,10 +251,10 @@ export const checkStockAlerts = inngest.createFunction(
         });
 
         // Step 4: Check conditions
-        type TriggeredAlert = { alert: any; currentPrice: number };
+        type TriggeredAlert = { alert: ActiveAlert; currentPrice: number };
         const triggeredAlerts: TriggeredAlert[] = [];
 
-        for (const alert of activeAlerts as any[]) {
+        for (const alert of activeAlerts as unknown as ActiveAlert[]) {
             const currentPrice = prices[alert.symbol];
             if (!currentPrice) continue;
 

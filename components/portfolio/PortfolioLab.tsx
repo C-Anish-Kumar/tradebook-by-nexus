@@ -48,11 +48,15 @@ export default function PortfolioLab({ initial }: { initial: string[] }) {
         setLoading(true);
         try {
             const res = await runPortfolioLab(tickers, years);
-            setResult(res);
+            if ('error' in res) {
+                toast.error(res.error);
+                return;
+            }
+            setResult(res.data);
             // Open on the method with the best out-of-sample Sharpe
-            setSelectedKey([...res.methods].sort((a, b) => b.out_of_sample.sharpe - a.out_of_sample.sharpe)[0].key);
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Optimisation failed');
+            setSelectedKey([...res.data.methods].sort((a, b) => b.out_of_sample.sharpe - a.out_of_sample.sharpe)[0].key);
+        } catch {
+            toast.error('Optimisation failed. Check your connection and try again.');
         } finally {
             setLoading(false);
         }

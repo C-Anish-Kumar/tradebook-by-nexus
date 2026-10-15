@@ -10,6 +10,8 @@ import NewsList from '@/components/watchlist/NewsList';
 import Panel from '@/components/Panel';
 import DataFreshness from '@/components/DataFreshness';
 import { SearchButton } from '@/components/SearchCommand';
+import EarningsList from '@/components/market/EarningsList';
+import { getEarningsCalendar } from '@/lib/market-intel';
 
 const RowsSkeleton = ({ rows = 4 }: { rows?: number }) => (
     <div className="row-list" aria-busy="true">
@@ -29,6 +31,15 @@ async function Symbols({ symbols }: { symbols: string[] }) {
 
 async function News({ symbols }: { symbols: string[] }) {
     return <NewsList news={await getNews(symbols).catch(() => [] as MarketNewsArticle[])} />;
+}
+
+// Reports for watched symbols: the last week (beat / miss) and the next three weeks
+async function Earnings({ symbols }: { symbols: string[] }) {
+    const cal = await getEarningsCalendar();
+    if (!cal) return <p className="p-4 text-[13px] text-faint">The earnings calendar is unavailable right now.</p>;
+    const watched = new Set(symbols);
+    const events = cal.events.filter((e) => watched.has(e.symbol)).sort((a, b) => a.date.localeCompare(b.date));
+    return <EarningsList events={events} empty={symbols.length ? 'None of your stocks report between now and three weeks out.' : 'Star stocks to see when they report.'} />;
 }
 
 // DB reads render first; everything from Finnhub streams in behind skeletons.
@@ -63,9 +74,16 @@ export default async function WatchlistPage() {
                     </Panel>
                 </div>
 
-                <Panel title="Alerts" sub={alertsEnabled ? `${activeAlerts} active · checked every 5 minutes` : 'Turned off on this server'} className="self-start">
-                    <AlertsPanel alerts={alerts} />
-                </Panel>
+                <div className="flex min-w-0 flex-col gap-3 self-start">
+                    <Panel title="Alerts" sub={alertsEnabled ? `${activeAlerts} active · checked every 5 minutes` : 'Turned off on this server'}>
+                        <AlertsPanel alerts={alerts} />
+                    </Panel>
+                    <Panel title="Earnings" sub="Your stocks, last week to three weeks out">
+                        <Suspense fallback={<RowsSkeleton rows={3} />}>
+                            <Earnings symbols={symbols} />
+                        </Suspense>
+                    </Panel>
+                </div>
             </div>
         </>
     );

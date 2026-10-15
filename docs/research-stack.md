@@ -14,6 +14,20 @@ The workflow they cover: **corporate financials → AI research → portfolio co
 | [FinQuant](https://github.com/fmilthaler/FinQuant) | Not used | Little activity, Quandl dependency, and everything it does skfolio does better | — |
 | [empyrical-reloaded](https://github.com/stefan-jansen/empyrical-reloaded) (Apache-2) | Used | The standard Sharpe / Sortino / Calmar / alpha / beta implementations | `metrics.performance()` used by Portfolio Lab and the strategy backtest |
 
+### Round two: World Monitor
+
+[World Monitor](https://github.com/koala73/worldmonitor) (AGPL-3.0, same as Tradebook) is a geopolitics
+dashboard with a finance edition. Its map, conflict and webcam panels don't fit a stock terminal; these did:
+
+| Idea | Where it lives in Tradebook |
+|---|---|
+| Seed-then-serve: background jobs fill a cache, pages only read it | `lib/cache.ts` (MongoDB stale-while-revalidate) + `lib/inngest/market.ts` |
+| Earnings calendar (Finnhub) | Watchlist panel, "Earnings this week" on Overview, countdown pill on stock pages |
+| Daily market brief (LLM over quotes + headlines) | "Market brief" on Overview |
+| Fear & greed composite | Overview, rebuilt on FRED only: VIX, high-yield spread, S&P momentum and strength, each ranked against its past year |
+| Yield curve (FRED DGS series) | Overview |
+| Economic calendar (FRED release dates) | Overview, when `FRED_API_KEY` is set |
+
 ## How it fits together
 
 ```

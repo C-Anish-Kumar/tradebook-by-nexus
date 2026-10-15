@@ -17,6 +17,10 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
 - **Portfolio Lab**: five allocation methods tested walk-forward on your stocks, with weights, the
   efficient frontier and a correlation matrix
+- **Market brief**: an AI-written summary of what moved and why, before the open, at midday and after the close
+- **Macro dashboard**: a fear & greed gauge, the US Treasury yield curve and the economic calendar
+- **Earnings calendar**: upcoming reports for your watchlist with beat/miss, the week's biggest reporters,
+  and a countdown on each stock page
 - **Market overview**: sector heatmap, movers, top stories and sentiment from Reddit, X.com, news and Polymarket
 - **Emails**: AI-written welcome email and a weekly news digest
 
@@ -32,7 +36,7 @@ empyrical on a Hugging Face Space
 |---|---|
 | Web app | Vercel (this repo, `main` auto-deploys) |
 | Database | MongoDB Atlas |
-| Background jobs | Inngest Cloud (Vercel integration) |
+| Background jobs | Inngest Cloud (Vercel integration): alerts, market data every hour, the market brief 3× a weekday, and a ping that keeps the AI service awake |
 | AI analyst service | Hugging Face Space running [`analyst-service/`](analyst-service/) |
 
 ## Environment variables
@@ -47,7 +51,8 @@ empyrical on a Hugging Face Space
 | `NODEMAILER_EMAIL`, `NODEMAILER_PASSWORD` | Gmail address and app password for emails |
 | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | set by the Inngest Vercel integration |
 | `ANALYST_SERVICE_URL`, `ANALYST_API_KEY` | the AI analyst Space and its shared secret |
-| `GEMINI_API_KEY` | optional, AI-written emails |
+| `GEMINI_API_KEY` | AI-written emails and the market brief |
+| `FRED_API_KEY` | optional, free from https://fred.stlouisfed.org/docs/api/api_key.html; turns on the economic calendar |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | optional, shows support email links on Help and Terms |
 
 The AI analyst service has its own setup guide in [`analyst-service/README.md`](analyst-service/README.md).
@@ -66,7 +71,8 @@ Tradebook by Nexus is built on [OpenStock](https://github.com/Open-Dev-Society/O
 Open Dev Society and uses [TradingAgents](https://github.com/TauricResearch/TradingAgents) by Tauric
 Research (Apache-2.0), [edgartools](https://github.com/dgunning/edgartools) (MIT),
 [skfolio](https://github.com/skfolio/skfolio) (BSD-3) and
-[empyrical-reloaded](https://github.com/stefan-jansen/empyrical-reloaded) (Apache-2.0). It is licensed under **AGPL-3.0**, like OpenStock: if you run a modified
+[empyrical-reloaded](https://github.com/stefan-jansen/empyrical-reloaded) (Apache-2.0), and adapts ideas
+from [World Monitor](https://github.com/koala73/worldmonitor) (AGPL-3.0). It is licensed under **AGPL-3.0**, like OpenStock: if you run a modified
 copy for others, you must offer them its source.
 
 Tradebook is a research and education tool, not financial advice.

@@ -44,7 +44,17 @@ async function AIAnalyst({ symbol }: { symbol: string }) {
 async function Strategy({ symbol }: { symbol: string }) {
     if (!analystEnabled || symbol.includes(':')) return null;
     const signals = await getStrategySignals(symbol);
-    if (!signals) return null;
+    if (!signals) {
+        // First visit while the Space sleeps: say so instead of silently dropping the panels
+        return (
+            <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+                <div className="empty-state py-10">
+                    <h3>Waking up the analyst service</h3>
+                    <p className="max-w-80 text-[13px]">The strategy checklist, backtest and fundamentals for {symbol} will be ready in about a minute. Refresh then.</p>
+                </div>
+            </Panel>
+        );
+    }
     return (
         <>
             <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">

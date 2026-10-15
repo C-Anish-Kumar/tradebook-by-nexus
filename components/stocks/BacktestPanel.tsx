@@ -26,9 +26,11 @@ export default function BacktestPanel({ symbol }: { symbol: string }) {
         setYears(y);
         setLoading(true);
         try {
-            setResult(await runBacktest(symbol, y));
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Backtest failed');
+            const res = await runBacktest(symbol, y);
+            if ('error' in res) toast.error(res.error);
+            else setResult(res.data);
+        } catch {
+            toast.error('Backtest failed. Check your connection and try again.');
         } finally {
             setLoading(false);
         }

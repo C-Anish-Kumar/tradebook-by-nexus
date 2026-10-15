@@ -134,7 +134,8 @@ export const MARKETS: Market[] = [
 ];
 
 export const DEFAULT_MARKET: MarketId = 'us';
-export const MARKET_COOKIE = 'openstock-market';
+export const MARKET_COOKIE = 'tradebook-market';
+export const LEGACY_MARKET_COOKIE = 'openstock-market'; // still read so saved choices survive the rename
 
 export const getMarket = (id?: string | null) => MARKETS.find((m) => m.id === id) ?? MARKETS[0];
 

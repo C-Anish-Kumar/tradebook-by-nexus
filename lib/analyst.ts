@@ -1,3 +1,5 @@
+import { cached } from '@/lib/cache';
+
 // Client for the TradingAgents service in analyst-service/ (hosted outside Vercel: a run takes minutes)
 
 const SERVICE_URL = process.env.ANALYST_SERVICE_URL?.replace(/\/+$/, '');
@@ -54,22 +56,19 @@ export type StrategySignals = {
     add_backs: StrategyCheck[];
 };
 
-// Daily-candle strategy checklist. Not user-specific, so the Next data cache shares it for 15 minutes.
+// Daily-candle strategy checklist, shared by everyone. Stored in MongoDB so a sleeping Space never blanks the panel.
 export async function getStrategySignals(ticker: string): Promise<StrategySignals | null> {
     if (!analystEnabled) return null;
-    const headers: Record<string, string> = { 'X-Analyst-Key': API_KEY! };
-    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
-    try {
+    return cached(`signals:${ticker}`, 15 * 60_000, async () => {
         const res = await fetch(`${SERVICE_URL}/signals/${encodeURIComponent(ticker)}`, {
-            headers,
-            next: { revalidate: 900 },
+            headers: serviceHeaders(),
+            cache: 'no-store',
             // A sleeping Space can take a minute to wake; don't hold the page that long
             signal: AbortSignal.timeout(20_000),
         });
-        return res.ok ? (await res.json() as StrategySignals) : null;
-    } catch {
-        return null;
-    }
+        if (!res.ok) throw new Error(`signals ${res.status}`);
+        return res.json() as Promise<StrategySignals>;
+    });
 }
 
 export type BacktestTrade = {
@@ -98,19 +97,22 @@ export type RiskMetrics = {
     max_drawdown: number; calmar: number; alpha?: number | null; beta?: number | null;
 };
 
-// Replays the strategy on the analyst service; results are cached there and here for 6 hours
+const WAKING = 'The analyst service is waking up. Try again in a minute.';
+
+// Replays the strategy on the analyst service; results are kept for 6 hours
 export async function getBacktest(ticker: string, years: number): Promise<BacktestResult> {
     if (!analystEnabled) throw new Error('The analyst service is not configured');
-    const headers: Record<string, string> = { 'X-Analyst-Key': API_KEY! };
-    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
-    const res = await fetch(`${SERVICE_URL}/backtest/${encodeURIComponent(ticker)}?years=${years}`, {
-        headers,
-        next: { revalidate: 6 * 60 * 60 },
-        signal: AbortSignal.timeout(90_000),
-    });
-    if (res.status === 404) throw new Error('Not enough price history to backtest this stock');
-    if (!res.ok) throw new Error(`Backtest failed (${res.status})`);
-    return res.json() as Promise<BacktestResult>;
+    const result = await cached(`backtest:${ticker}:${years}`, 6 * 60 * 60_000, async () => {
+        const res = await fetch(`${SERVICE_URL}/backtest/${encodeURIComponent(ticker)}?years=${years}`, {
+            headers: serviceHeaders(),
+            cache: 'no-store',
+            signal: AbortSignal.timeout(90_000),
+        });
+        if (res.status === 404) throw new Error('Not enough price history to backtest this stock');
+        if (!res.ok) throw new Error(res.status >= 502 ? WAKING : `Backtest failed (${res.status})`);
+        return res.json() as Promise<BacktestResult>;
+    }, { throwOnMiss: true });
+    return result!;
 }
 
 const serviceHeaders = () => {
@@ -136,20 +138,19 @@ export type Fundamentals = {
     insiders: { days: number; filings_scanned: number; bought_value: number; sold_value: number; trades: InsiderTrade[] };
 };
 
-// SEC EDGAR statements and Form 4s for US filers. Filings change slowly, so cache for 12 hours.
+// SEC EDGAR statements and Form 4s for US filers. Filings change slowly, so keep for 12 hours.
 export async function getFundamentals(ticker: string): Promise<Fundamentals | null> {
     if (!analystEnabled || ticker.includes('.')) return null; // foreign listings aren't SEC filers
-    try {
+    return cached(`fundamentals:${ticker}`, 12 * 60 * 60_000, async () => {
         const res = await fetch(`${SERVICE_URL}/fundamentals/${encodeURIComponent(ticker)}`, {
             headers: serviceHeaders(),
-            next: { revalidate: 12 * 60 * 60 },
+            cache: 'no-store',
             // A cold lookup reads several filings from the SEC (~8 s)
             signal: AbortSignal.timeout(30_000),
         });
-        return res.ok ? (await res.json() as Fundamentals) : null;
-    } catch {
-        return null;
-    }
+        if (!res.ok) throw new Error(`fundamentals ${res.status}`);
+        return res.json() as Promise<Fundamentals>;
+    });
 }
 
 export type PortfolioMethod = {
@@ -171,20 +172,31 @@ export type PortfolioResult = {
     correlation: { tickers: string[]; matrix: number[][] };
 };
 
-// skfolio walk-forward comparison on the analyst service (cached there for 6 hours)
+// skfolio walk-forward comparison on the analyst service, kept for 6 hours per ticker set
 export async function optimizePortfolio(tickers: string[], years: number): Promise<PortfolioResult> {
     if (!analystEnabled) throw new Error('The analyst service is not configured');
-    const res = await fetch(`${SERVICE_URL}/portfolio/optimize`, {
-        method: 'POST',
-        headers: serviceHeaders(),
-        body: JSON.stringify({ tickers, years, benchmark: 'SPY' }),
-        cache: 'no-store',
-        signal: AbortSignal.timeout(90_000),
-    });
-    if (res.status === 404 || res.status === 422) {
-        const detail = await res.json().then((b) => b.detail).catch(() => null);
-        throw new Error(typeof detail === 'string' ? detail : 'Not enough price history for these tickers');
-    }
-    if (!res.ok) throw new Error(`Optimisation failed (${res.status})`);
-    return res.json() as Promise<PortfolioResult>;
+    const key = `portfolio:${[...tickers].sort().join(',')}:${years}`;
+    const result = await cached(key, 6 * 60 * 60_000, async () => {
+        const res = await fetch(`${SERVICE_URL}/portfolio/optimize`, {
+            method: 'POST',
+            headers: serviceHeaders(),
+            body: JSON.stringify({ tickers, years, benchmark: 'SPY' }),
+            cache: 'no-store',
+            signal: AbortSignal.timeout(90_000),
+        });
+        if (res.status === 404 || res.status === 422) {
+            const detail = await res.json().then((b) => b.detail).catch(() => null);
+            throw new Error(typeof detail === 'string' ? detail : 'Not enough price history for these tickers');
+        }
+        if (!res.ok) throw new Error(res.status >= 502 ? WAKING : `Optimisation failed (${res.status})`);
+        return res.json() as Promise<PortfolioResult>;
+    }, { throwOnMiss: true });
+    return result!;
+}
+
+// Pinged on a schedule so the free Space never falls asleep between visitors
+export async function pingAnalystService(): Promise<number> {
+    if (!analystEnabled) return 0;
+    const res = await fetch(`${SERVICE_URL}/`, { headers: serviceHeaders(), cache: 'no-store', signal: AbortSignal.timeout(60_000) });
+    return res.status;
 }

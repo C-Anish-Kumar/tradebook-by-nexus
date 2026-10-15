@@ -8,6 +8,7 @@ import { formatNumber, formatPrice, formatSymbolForTradingView } from "@/lib/uti
 import { hasFinnhubQuotes } from "@/lib/markets";
 import { symbolInfoConfig } from "@/lib/constants";
 import TradingViewWidget from "@/components/TradingViewWidget";
+import { getEarningsCalendar } from "@/lib/market-intel";
 
 // Symbols Finnhub's free plan can't price (most non-US listings) use TradingView's quote panel instead.
 async function TradingViewHeader({ symbol }: { symbol: string }) {
@@ -37,11 +38,16 @@ async function TradingViewHeader({ symbol }: { symbol: string }) {
 export default async function StockHeader({ symbol }: { symbol: string }) {
     if (!hasFinnhubQuotes(symbol)) return <TradingViewHeader symbol={symbol} />;
 
-    const [isInWatchlist, quotes, profile] = await Promise.all([
+    const [isInWatchlist, quotes, profile, calendar] = await Promise.all([
         isStockInWatchlist(symbol),
         getLiveQuotes([symbol]),
         getCompanyProfile(symbol),
+        getEarningsCalendar().catch(() => null),
     ]);
+    // Next report within three weeks, if any
+    const today = new Date().toISOString().slice(0, 10);
+    const nextReport = calendar?.events.find((e) => e.symbol === symbol && e.date >= today);
+    const reportIn = nextReport ? Math.round((new Date(`${nextReport.date}T12:00:00Z`).getTime() - Date.now()) / 86_400_000) : null;
     const quote = quotes[symbol];
 
     const currency = profile?.currency || 'USD';
@@ -69,6 +75,12 @@ export default async function StockHeader({ symbol }: { symbol: string }) {
                         <p className="mono truncate text-[12.5px] text-faint">
                             {[symbol, profile?.exchange, profile?.finnhubIndustry].filter(Boolean).join(' · ')}
                         </p>
+                        {nextReport && reportIn !== null && (
+                            <p className="mt-1"><span className="pill is-brand" title={`Q${nextReport.quarter} ${nextReport.year} results`}>
+                                <CalendarClock /> Earnings {reportIn <= 0 ? 'today' : reportIn === 1 ? 'tomorrow' : `in ${reportIn} days`}
+                                {nextReport.hour === 'bmo' ? ' · before open' : nextReport.hour === 'amc' ? ' · after close' : ''}
+                            </span></p>
+                        )}
                     </div>
                 </div>
 

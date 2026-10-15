@@ -8,7 +8,8 @@ import { openSearch } from "@/components/SearchCommand";
 import { cn } from "@/lib/utils";
 
 const PINNED = ['/dashboard', '/watchlist'];
-const STORAGE_KEY = 'openstock-tabs';
+const STORAGE_KEY = 'tradebook-tabs';
+const LEGACY_STORAGE_KEY = 'openstock-tabs'; // read once so tabs survive the rename
 const MAX_TABS = 12;
 
 const PAGE_LABELS: Record<string, string> = {
@@ -42,7 +43,7 @@ const TabBar = ({ onMenu }: { onMenu: () => void }) => {
     // Restore tabs from the last visit (per-browser convenience only)
     useEffect(() => {
         try {
-            const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
+            const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? '[]');
             if (Array.isArray(saved)) {
                 setTabs((current) => saved.filter((p): p is string => typeof p === 'string').reduce(withTab, current));
             }

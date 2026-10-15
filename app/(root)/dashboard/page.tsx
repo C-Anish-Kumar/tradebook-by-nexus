@@ -12,16 +12,63 @@ import {
     marketQuotesConfig,
     timelineConfig,
 } from "@/lib/constants";
-import { MARKETS, MARKET_COOKIE, getMarket, isMarketOpen, marketForCountry } from "@/lib/markets";
+import { MARKETS, MARKET_COOKIE, LEGACY_MARKET_COOKIE, getMarket, isMarketOpen, marketForCountry } from "@/lib/markets";
 import { getSession } from "@/lib/better-auth/auth";
+import { getEarningsCalendar, getMacroSnapshot, getMarketBrief } from "@/lib/market-intel";
+import MarketBrief from "@/components/market/MarketBrief";
+import FearGreedCard from "@/components/market/FearGreedCard";
+import YieldCurveChart from "@/components/market/YieldCurveChart";
+import EconomicCalendar from "@/components/market/EconomicCalendar";
+import EarningsList from "@/components/market/EarningsList";
 
 const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
+
+async function Brief() {
+    const brief = await getMarketBrief();
+    if (!brief) return null;
+    return (
+        <Panel title="Market brief" sub="What moved and why, refreshed before the open, at midday and after the close">
+            <MarketBrief brief={brief} />
+        </Panel>
+    );
+}
+
+// US macro: fear & greed, the Treasury curve and the release calendar (precomputed hourly)
+async function Macro() {
+    const macro = await getMacroSnapshot();
+    if (!macro) return null;
+    const { fearGreed, yieldCurve, calendar } = macro;
+    return (
+        <div className={`grid gap-3 ${calendar ? 'xl:grid-cols-3' : 'xl:grid-cols-2'}`}>
+            {fearGreed && <Panel title="Fear & greed" sub="Volatility, credit, momentum and strength in one score"><FearGreedCard data={fearGreed} /></Panel>}
+            {yieldCurve && <Panel title="Yield curve" sub="US Treasury yields by maturity"><YieldCurveChart curve={yieldCurve} /></Panel>}
+            {calendar && <Panel title="Economic calendar" sub="US releases in the next five weeks"><EconomicCalendar events={calendar} /></Panel>}
+        </div>
+    );
+}
+
+// The week's biggest reports, ranked by expected revenue
+async function EarningsWeek() {
+    const cal = await getEarningsCalendar();
+    if (!cal) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const weekOut = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const events = cal.events.filter((e) => e.date >= today && e.date <= weekOut && e.revenueEstimate)
+        .sort((a, b) => (b.revenueEstimate ?? 0) - (a.revenueEstimate ?? 0)).slice(0, 10)
+        .sort((a, b) => a.date.localeCompare(b.date));
+    return (
+        <Panel title="Earnings this week" sub="Largest companies reporting in the next 7 days">
+            <EarningsList events={events} empty="No large companies report in the next 7 days." />
+        </Panel>
+    );
+}
 
 // Widgets come from TradingView (live, no Finnhub quota) and render immediately; the tiles stream in.
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ market?: string }> }) {
     const { market: requested } = await searchParams;
     // Explicit choice, then the remembered one, then the market of the user's country
-    const saved = (await cookies()).get(MARKET_COOKIE)?.value;
+    const jar = await cookies();
+    const saved = (jar.get(MARKET_COOKIE) ?? jar.get(LEGACY_MARKET_COOKIE))?.value;
     const market = getMarket(requested ?? saved ?? marketForCountry((await getSession())?.user.country));
     const open = isMarketOpen(market);
     const native = market.pulse.some((p) => p.finnhub);
@@ -55,6 +102,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                     <IndexPulse market={market} />
                 </Suspense>
             </section>
+
+            {market.id === 'us' && (
+                <div className="flex flex-col gap-3">
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                        <Suspense fallback={null}><Brief /></Suspense>
+                        <Suspense fallback={null}><EarningsWeek /></Suspense>
+                    </div>
+                    <Suspense fallback={null}><Macro /></Suspense>
+                </div>
+            )}
 
             <div key={market.id} className="flex flex-col gap-3">
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
