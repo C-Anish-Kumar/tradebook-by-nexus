@@ -144,7 +144,13 @@ export const CANDLE_CHART_WIDGET_CONFIG = (symbol: string) => ({
     watchlist: [],
     withdateranges: false,
     compareSymbols: [],
-    studies: [],
+    // The Strategy panel's indicators: 10/21 EMA, 50 DEMA and Supertrend (10,3)
+    studies: [
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 10 } },
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 21 } },
+        { id: 'STD;DEMA', inputs: { in_0: 50 } },
+        { id: 'STD;Supertrend', inputs: { in_0: 10, in_1: 3 } },
+    ],
     width: '100%',
     height: 600,
 });

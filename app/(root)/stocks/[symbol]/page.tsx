@@ -4,6 +4,7 @@ import TradingViewWidget from "@/components/TradingViewWidget";
 import StockHeader, { StockHeaderSkeleton } from "@/components/stocks/StockHeader";
 import StockSentimentCard from "@/components/stocks/StockSentimentCard";
 import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
+import StrategyPanel from "@/components/stocks/StrategyPanel";
 import Panel from "@/components/Panel";
 import {
     CANDLE_CHART_WIDGET_CONFIG,
@@ -13,7 +14,7 @@ import {
 } from "@/lib/constants";
 import { getStockSentimentInsights } from '@/lib/actions/adanos.actions';
 import { getLatestAnalysis } from '@/lib/actions/analysis.actions';
-import { analystEnabled } from '@/lib/analyst';
+import { analystEnabled, getStrategySignals } from '@/lib/analyst';
 import { formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils';
 
 const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
@@ -34,6 +35,17 @@ async function AIAnalyst({ symbol }: { symbol: string }) {
     return (
         <Panel title="AI Analyst" sub="Agents debate the stock and settle on a rating">
             <AIAnalystPanel symbol={symbol} initial={latest} />
+        </Panel>
+    );
+}
+
+async function Strategy({ symbol }: { symbol: string }) {
+    if (!analystEnabled || symbol.includes(':')) return null;
+    const signals = await getStrategySignals(symbol);
+    if (!signals) return null;
+    return (
+        <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+            <StrategyPanel signals={signals} />
         </Panel>
     );
 }
@@ -76,6 +88,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                             </div>
                         </Panel>
                     )}
+                    <Suspense fallback={null}>
+                        <Strategy symbol={symbol} />
+                    </Suspense>
                     <Panel title="Financials" sub="Income statement, balance sheet and ratios">
                         <TradingViewWidget
                             scriptUrl={`${scriptUrl}financials.js`}

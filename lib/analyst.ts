@@ -35,3 +35,39 @@ export const startAnalystJob = (ticker: string, date: string) =>
     call<{ id: string }>('/analyses', { method: 'POST', body: JSON.stringify({ ticker, date }) });
 
 export const getAnalystJob = (id: string) => call<AnalystJob>(`/analyses/${encodeURIComponent(id)}`);
+
+export type StrategyCheck = { rule: string; passed: boolean; detail: string };
+export type StrategySignals = {
+    ticker: string;
+    date: string;
+    close: number;
+    verdict: string;
+    tone: 'up' | 'down' | 'warn' | 'neutral';
+    trend: 'up' | 'down' | 'mixed';
+    indicators: {
+        ema10: number; ema21: number; dema50: number; supertrend: number;
+        supertrend_up: boolean; supertrend_flipped_today: boolean; weekly_supertrend_up: boolean | null;
+    };
+    risk: { stop: number; target_4r: number | null };
+    entry: StrategyCheck[];
+    exits: StrategyCheck[];
+    add_backs: StrategyCheck[];
+};
+
+// Daily-candle strategy checklist. Not user-specific, so the Next data cache shares it for 15 minutes.
+export async function getStrategySignals(ticker: string): Promise<StrategySignals | null> {
+    if (!analystEnabled) return null;
+    const headers: Record<string, string> = { 'X-Analyst-Key': API_KEY! };
+    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
+    try {
+        const res = await fetch(`${SERVICE_URL}/signals/${encodeURIComponent(ticker)}`, {
+            headers,
+            next: { revalidate: 900 },
+            // A sleeping Space can take a minute to wake; don't hold the page that long
+            signal: AbortSignal.timeout(20_000),
+        });
+        return res.ok ? (await res.json() as StrategySignals) : null;
+    } catch {
+        return null;
+    }
+}

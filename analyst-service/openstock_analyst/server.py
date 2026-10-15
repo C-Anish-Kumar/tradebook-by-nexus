@@ -28,6 +28,8 @@ from tradingagents.default_config import build_default_config  # noqa: E402
 from tradingagents.graph.trading_graph import TradingAgentsGraph  # noqa: E402
 from tradingagents.reporting import write_report_tree  # noqa: E402
 
+from openstock_analyst.strategy import evaluate  # noqa: E402
+
 API_KEY = os.environ.get("ANALYST_API_KEY", "")
 TICKER_PATTERN = re.compile(r"^[A-Z0-9][A-Z0-9.\-]{0,14}$")
 JOB_TTL_SECONDS = 24 * 60 * 60
@@ -119,6 +121,32 @@ def get_analysis(job_id: str):
         if job is None:
             raise HTTPException(status_code=404, detail="Unknown job")
         return dict(job)
+
+
+SIGNAL_TTL_SECONDS = 15 * 60
+signal_cache: dict[str, tuple[float, dict]] = {}
+
+
+@app.get("/signals/{ticker}", dependencies=[Depends(require_key)])
+def get_signals(ticker: str):
+    """10/21 EMA + Supertrend (10,3) checklist on daily candles, cached for 15 minutes."""
+    ticker = ticker.strip().upper()
+    if not TICKER_PATTERN.match(ticker):
+        raise HTTPException(status_code=422, detail="Invalid ticker")
+    cached = signal_cache.get(ticker)
+    if cached and time.time() - cached[0] < SIGNAL_TTL_SECONDS:
+        return cached[1]
+
+    import yfinance as yf
+
+    history = yf.Ticker(ticker)
+    daily = history.history(period="2y", interval="1d", auto_adjust=False)
+    if len(daily) < 120:
+        raise HTTPException(status_code=404, detail="Not enough price history for this ticker")
+    weekly = history.history(period="5y", interval="1wk", auto_adjust=False)
+    result = {"ticker": ticker, **evaluate(daily, weekly)}
+    signal_cache[ticker] = (time.time(), result)
+    return result
 
 
 def main():

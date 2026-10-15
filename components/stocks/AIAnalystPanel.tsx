@@ -62,7 +62,7 @@ export default function AIAnalystPanel({ symbol, initial }: { symbol: string; in
     };
 
     return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 p-4">
             {analysis?.status === 'done' && (
                 <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
