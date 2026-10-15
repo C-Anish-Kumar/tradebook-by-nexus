@@ -55,7 +55,7 @@ const SignIn = () => {
                 <InputField
                     name="email"
                     label="Email"
-                    placeholder="opendevsociety@cc.cc"
+                    placeholder="you@example.com"
                     register={register}
                     error={errors.email}
                     validation={{
