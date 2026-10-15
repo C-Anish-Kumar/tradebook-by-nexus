@@ -12,13 +12,19 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Watchlists and alerts**: star stocks, set price targets, get an email when they cross
 - **AI Analyst**: [TradingAgents](https://github.com/TauricResearch/TradingAgents) analysts, bull/bear
   researchers, a trader and a risk team debate a stock and save a rating plus a full report
+- **Strategy and backtest**: a 10/21 EMA + Supertrend (10,3) checklist on every stock, a replay of it over
+  1–10 years, and risk-adjusted scores (Sharpe, Sortino, Calmar, alpha/beta vs SPY)
+- **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
+- **Portfolio Lab**: five allocation methods tested walk-forward on your stocks, with weights, the
+  efficient frontier and a correlation matrix
 - **Market overview**: sector heatmap, movers, top stories and sentiment from Reddit, X.com, news and Polymarket
 - **Emails**: AI-written welcome email and a weekly news digest
 
 ## Stack
 
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Better Auth · MongoDB Atlas · Finnhub ·
-TradingView widgets · Inngest · Nodemailer (Gmail) · Gemini · TradingAgents on a Hugging Face Space
+TradingView widgets · Inngest · Nodemailer (Gmail) · Gemini · TradingAgents, edgartools, skfolio and
+empyrical on a Hugging Face Space
 
 ## How it is deployed
 
@@ -58,7 +64,9 @@ npm run dev
 
 Tradebook by Nexus is built on [OpenStock](https://github.com/Open-Dev-Society/OpenStock) by
 Open Dev Society and uses [TradingAgents](https://github.com/TauricResearch/TradingAgents) by Tauric
-Research (Apache-2.0). It is licensed under **AGPL-3.0**, like OpenStock: if you run a modified
+Research (Apache-2.0), [edgartools](https://github.com/dgunning/edgartools) (MIT),
+[skfolio](https://github.com/skfolio/skfolio) (BSD-3) and
+[empyrical-reloaded](https://github.com/stefan-jansen/empyrical-reloaded) (Apache-2.0). It is licensed under **AGPL-3.0**, like OpenStock: if you run a modified
 copy for others, you must offer them its source.
 
 Tradebook is a research and education tool, not financial advice.

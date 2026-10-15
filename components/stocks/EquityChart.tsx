@@ -21,7 +21,10 @@ function niceTicks(lo: number, hi: number, count = 4) {
     return out;
 }
 
-export default function EquityChart({ points }: { points: BacktestResult['equity'] }) {
+type Props = { points: BacktestResult['equity']; labels?: [string, string] };
+
+export default function EquityChart({ points, labels = ['Strategy', 'Buy & hold'] }: Props) {
+    const [aLabel, bLabel] = labels;
     const svgRef = useRef<SVGSVGElement>(null);
     const boxRef = useRef<HTMLDivElement>(null);
     const [hover, setHover] = useState<number | null>(null);
@@ -64,13 +67,13 @@ export default function EquityChart({ points }: { points: BacktestResult['equity
     return (
         <figure className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-4 text-[12px] text-muted-foreground">
-                <span className="flex items-center gap-1.5"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke={STRATEGY} strokeWidth="2" /></svg>Strategy</span>
-                <span className="flex items-center gap-1.5"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke={BUY_HOLD} strokeWidth="2" strokeDasharray="4 3" /></svg>Buy &amp; hold</span>
+                <span className="flex items-center gap-1.5"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke={STRATEGY} strokeWidth="2" /></svg>{aLabel}</span>
+                <span className="flex items-center gap-1.5"><svg width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke={BUY_HOLD} strokeWidth="2" strokeDasharray="4 3" /></svg>{bLabel}</span>
                 <span className="text-faint">Growth of $10,000</span>
             </div>
             <div ref={boxRef} className="relative">
                 <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block max-w-full touch-none" role="img"
-                     aria-label={`Equity curve: strategy ends at ${money(last.strategy)}, buy and hold at ${money(last.buy_hold)}`}
+                     aria-label={`Equity curve: ${aLabel} ends at ${money(last.strategy)}, ${bLabel} at ${money(last.buy_hold)}`}
                      onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
                     {ticks.map((v) => (
                         <g key={v}>
@@ -85,8 +88,8 @@ export default function EquityChart({ points }: { points: BacktestResult['equity
                     <path d={holdPath} fill="none" stroke={BUY_HOLD} strokeWidth="2" strokeDasharray="5 4" strokeLinejoin="round" />
                     <path d={strategyPath} fill="none" stroke={STRATEGY} strokeWidth="2" strokeLinejoin="round" />
                     {/* direct labels at the line ends */}
-                    <text x={W - PAD.r + 8} y={y(last.strategy)} dy="0.32em" fontSize="11" fill="var(--foreground)">Strategy</text>
-                    <text x={W - PAD.r + 8} y={y(last.buy_hold)} dy="0.32em" fontSize="11" fill="var(--muted-foreground)">Buy &amp; hold</text>
+                    <text x={W - PAD.r + 8} y={y(last.strategy)} dy="0.32em" fontSize="11" fill="var(--foreground)">{aLabel}</text>
+                    <text x={W - PAD.r + 8} y={y(last.buy_hold)} dy="0.32em" fontSize="11" fill="var(--muted-foreground)">{bLabel}</text>
                     {h && hover !== null && (
                         <g>
                             <line x1={x(hover)} x2={x(hover)} y1={PAD.t} y2={H - PAD.b} stroke="var(--faint)" strokeWidth="1" />
@@ -99,8 +102,8 @@ export default function EquityChart({ points }: { points: BacktestResult['equity
                     <div className="pointer-events-none absolute top-1 rounded-[8px] bg-page px-2.5 py-1.5 text-[12px] shadow-[inset_0_0_0_1px_var(--line)]"
                          style={{ left: `${(x(hover) / W) * 100}%`, transform: hover > points.length / 2 ? 'translateX(calc(-100% - 8px))' : 'translateX(8px)' }}>
                         <p className="text-faint">Week of {h.date}</p>
-                        <p className="num text-foreground">Strategy {money(h.strategy)}</p>
-                        <p className="num text-muted-foreground">Buy &amp; hold {money(h.buy_hold)}</p>
+                        <p className="num text-foreground">{aLabel} {money(h.strategy)}</p>
+                        <p className="num text-muted-foreground">{bLabel} {money(h.buy_hold)}</p>
                     </div>
                 )}
             </div>

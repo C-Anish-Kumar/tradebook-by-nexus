@@ -45,6 +45,16 @@ export default function BacktestPanel({ symbol }: { symbol: string }) {
         ['Avg win / loss', `${pct(s.avg_win_pct)} / ${pct(s.avg_loss_pct)}`, null],
         ['Profit factor', s.profit_factor === null ? '—' : s.profit_factor.toFixed(2), s.profit_factor === null ? null : s.profit_factor >= 1],
     ] as const : [];
+    // Risk-adjusted scores from empyrical on the weekly curve; alpha is yearly excess return vs SPY
+    const r = result?.risk;
+    const ratio = (n: number | null | undefined) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : n.toFixed(2));
+    const riskTiles = r ? [
+        ['Sharpe', ratio(r.sharpe), r.sharpe >= 1 ? true : r.sharpe < 0 ? false : null],
+        ['Sortino', ratio(r.sortino), r.sortino >= 1 ? true : r.sortino < 0 ? false : null],
+        ['Calmar', ratio(r.calmar), r.calmar >= 0.5 ? true : r.calmar < 0 ? false : null],
+        ['Alpha / beta vs SPY', r.alpha === null || r.alpha === undefined ? '—' : `${pct(r.alpha * 100)} / ${ratio(r.beta)}`,
+            r.alpha === null || r.alpha === undefined ? null : r.alpha >= 0],
+    ] as const : [];
     const trades = result ? [...result.trades].reverse() : [];
 
     return (
@@ -76,6 +86,17 @@ export default function BacktestPanel({ symbol }: { symbol: string }) {
                             </div>
                         ))}
                     </dl>
+
+                    {riskTiles.length > 0 && (
+                        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Risk-adjusted metrics">
+                            {riskTiles.map(([label, value, good]) => (
+                                <div key={label} className="rounded-[10px] px-3 py-2 shadow-[inset_0_0_0_1px_var(--line)]">
+                                    <dt className="kicker">{label}</dt>
+                                    <dd className={cn('num text-[15px] font-semibold', good === true && 'text-up', good === false && 'text-down')}>{value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                    )}
 
                     <EquityChart points={result.equity} />
 

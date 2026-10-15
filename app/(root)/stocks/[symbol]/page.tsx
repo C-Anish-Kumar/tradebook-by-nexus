@@ -6,6 +6,7 @@ import StockSentimentCard from "@/components/stocks/StockSentimentCard";
 import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import StrategyPanel from "@/components/stocks/StrategyPanel";
 import BacktestPanel from "@/components/stocks/BacktestPanel";
+import FundamentalsPanel from "@/components/stocks/FundamentalsPanel";
 import Panel from "@/components/Panel";
 import {
     CANDLE_CHART_WIDGET_CONFIG,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/constants";
 import { getStockSentimentInsights } from '@/lib/actions/adanos.actions';
 import { getLatestAnalysis } from '@/lib/actions/analysis.actions';
-import { analystEnabled, getStrategySignals } from '@/lib/analyst';
+import { analystEnabled, getFundamentals, getStrategySignals } from '@/lib/analyst';
 import { formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils';
 
 const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
@@ -53,6 +54,17 @@ async function Strategy({ symbol }: { symbol: string }) {
                 <BacktestPanel symbol={symbol} />
             </Panel>
         </>
+    );
+}
+
+async function SecFundamentals({ symbol }: { symbol: string }) {
+    if (symbol.includes(':')) return null;
+    const data = await getFundamentals(symbol);
+    if (!data) return null; // not an SEC filer, or the service is asleep
+    return (
+        <Panel title="Fundamentals" sub="From SEC filings: annual results, insider trades and the latest reports">
+            <FundamentalsPanel data={data} />
+        </Panel>
     );
 }
 
@@ -96,6 +108,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                     )}
                     <Suspense fallback={null}>
                         <Strategy symbol={symbol} />
+                    </Suspense>
+                    <Suspense fallback={null}>
+                        <SecFundamentals symbol={symbol} />
                     </Suspense>
                     <Panel title="Financials" sub="Income statement, balance sheet and ratios">
                         <TradingViewWidget

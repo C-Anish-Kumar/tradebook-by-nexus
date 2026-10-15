@@ -89,6 +89,13 @@ export type BacktestResult = {
     trades: BacktestTrade[];
     open_trade: { entry_date: string; entry_price: number; quarters_held: number; stop: number } | null;
     assumptions: { start_equity: number; cost_per_side_pct: number; fills: string };
+    // empyrical metrics on the weekly curve vs SPY; null when the benchmark couldn't load
+    risk?: RiskMetrics | null;
+};
+
+export type RiskMetrics = {
+    annual_return: number; annual_volatility: number; sharpe: number; sortino: number;
+    max_drawdown: number; calmar: number; alpha?: number | null; beta?: number | null;
 };
 
 // Replays the strategy on the analyst service; results are cached there and here for 6 hours
@@ -104,4 +111,80 @@ export async function getBacktest(ticker: string, years: number): Promise<Backte
     if (res.status === 404) throw new Error('Not enough price history to backtest this stock');
     if (!res.ok) throw new Error(`Backtest failed (${res.status})`);
     return res.json() as Promise<BacktestResult>;
+}
+
+const serviceHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Analyst-Key': API_KEY! };
+    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
+    return headers;
+};
+
+export type FundamentalsLine = { key: string; label: string; values: (number | null)[] };
+export type InsiderTrade = {
+    date: string; name: string; position: string | null; side: 'buy' | 'sell';
+    shares: number; value: number; planned: boolean; url: string;
+};
+export type Fundamentals = {
+    ticker: string; name: string; cik: number; industry: string | null;
+    periods: string[];
+    lines: FundamentalsLine[];
+    derived: {
+        operating_margin_pct: (number | null)[] | null; net_margin_pct: (number | null)[] | null;
+        fcf_margin_pct: (number | null)[] | null; revenue_growth_pct: (number | null)[] | null;
+    };
+    filings: { form: string; date: string; url: string }[];
+    insiders: { days: number; filings_scanned: number; bought_value: number; sold_value: number; trades: InsiderTrade[] };
+};
+
+// SEC EDGAR statements and Form 4s for US filers. Filings change slowly, so cache for 12 hours.
+export async function getFundamentals(ticker: string): Promise<Fundamentals | null> {
+    if (!analystEnabled || ticker.includes('.')) return null; // foreign listings aren't SEC filers
+    try {
+        const res = await fetch(`${SERVICE_URL}/fundamentals/${encodeURIComponent(ticker)}`, {
+            headers: serviceHeaders(),
+            next: { revalidate: 12 * 60 * 60 },
+            // A cold lookup reads several filings from the SEC (~8 s)
+            signal: AbortSignal.timeout(30_000),
+        });
+        return res.ok ? (await res.json() as Fundamentals) : null;
+    } catch {
+        return null;
+    }
+}
+
+export type PortfolioMethod = {
+    key: 'max_sharpe' | 'min_variance' | 'hrp' | 'risk_parity' | 'equal';
+    label: string;
+    weights: Record<string, number>;
+    in_sample: { annual_return: number; annual_volatility: number };
+    out_of_sample: RiskMetrics;
+};
+export type PortfolioResult = {
+    benchmark_ticker: string; years: number;
+    tickers: string[]; start: string; end: string; out_of_sample_start: string;
+    walk_forward: { train_days: number; test_days: number };
+    methods: PortfolioMethod[];
+    benchmark: RiskMetrics;
+    equity: ({ date: string; benchmark: number } & Record<string, number | string>)[];
+    frontier: { annual_return: number; annual_volatility: number }[];
+    assets: { ticker: string; annual_return: number; annual_volatility: number }[];
+    correlation: { tickers: string[]; matrix: number[][] };
+};
+
+// skfolio walk-forward comparison on the analyst service (cached there for 6 hours)
+export async function optimizePortfolio(tickers: string[], years: number): Promise<PortfolioResult> {
+    if (!analystEnabled) throw new Error('The analyst service is not configured');
+    const res = await fetch(`${SERVICE_URL}/portfolio/optimize`, {
+        method: 'POST',
+        headers: serviceHeaders(),
+        body: JSON.stringify({ tickers, years, benchmark: 'SPY' }),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(90_000),
+    });
+    if (res.status === 404 || res.status === 422) {
+        const detail = await res.json().then((b) => b.detail).catch(() => null);
+        throw new Error(typeof detail === 'string' ? detail : 'Not enough price history for these tickers');
+    }
+    if (!res.ok) throw new Error(`Optimisation failed (${res.status})`);
+    return res.json() as Promise<PortfolioResult>;
 }

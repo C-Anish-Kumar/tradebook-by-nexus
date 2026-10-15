@@ -29,6 +29,7 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph  # noqa: E402
 from tradingagents.reporting import write_report_tree  # noqa: E402
 
 from openstock_analyst.backtest import run as run_backtest  # noqa: E402
+from openstock_analyst.metrics import performance  # noqa: E402
 from openstock_analyst.strategy import evaluate  # noqa: E402
 
 API_KEY = os.environ.get("ANALYST_API_KEY", "")
@@ -172,7 +173,98 @@ def get_backtest(ticker: str, years: int = 5):
     if len(daily) < 250:
         raise HTTPException(status_code=404, detail="Not enough price history to backtest")
     result = {"ticker": ticker, "years": years, **run_backtest(daily)}
+    result["risk"] = _strategy_risk(result, years)
     backtest_cache[key] = (time.time(), result)
+    return result
+
+
+def _strategy_risk(result: dict, years: int) -> dict | None:
+    """Sharpe, Sortino, Calmar and alpha/beta vs SPY for the strategy's equity curve."""
+    import pandas as pd
+    import yfinance as yf
+
+    try:
+        equity = pd.Series({pd.Timestamp(p["date"]): p["strategy"] for p in result["equity"]})
+        spy = yf.Ticker("SPY").history(period=f"{years}y", interval="1d")["Close"]
+        spy.index = spy.index.tz_localize(None)
+        weekly_spy = spy.resample("W").last().pct_change()
+        # Weekly points: annualise with 52 periods
+        import empyrical as ep
+        rets = equity.pct_change().dropna()
+        out = performance(rets, weekly_spy)
+        out["annual_return"] = round(float(ep.annual_return(rets, period="weekly")), 4)
+        out["annual_volatility"] = round(float(ep.annual_volatility(rets, period="weekly")), 4)
+        out["sharpe"] = round(float(ep.sharpe_ratio(rets, period="weekly")), 4)
+        out["sortino"] = round(float(ep.sortino_ratio(rets, period="weekly")), 4)
+        out["calmar"] = round(float(ep.calmar_ratio(rets, period="weekly")), 4)
+        aligned = pd.concat([rets, weekly_spy], axis=1, join="inner").dropna()
+        if len(aligned) > 20:
+            alpha, beta = ep.alpha_beta(aligned.iloc[:, 0], aligned.iloc[:, 1], period="weekly")
+            out["alpha"], out["beta"] = round(float(alpha), 4), round(float(beta), 4)
+        return out
+    except Exception:
+        return None
+
+
+FUNDAMENTALS_TTL_SECONDS = 12 * 60 * 60
+fundamentals_cache: dict[str, tuple[float, dict]] = {}
+
+
+@app.get("/fundamentals/{ticker}", dependencies=[Depends(require_key)])
+def get_fundamentals_route(ticker: str):
+    """Annual SEC financials, open-market insider trades and recent filings (US registrants)."""
+    from openstock_analyst.fundamentals import get_fundamentals
+
+    ticker = ticker.strip().upper()
+    if not TICKER_PATTERN.match(ticker) or "." in ticker:
+        raise HTTPException(status_code=422, detail="SEC data covers US tickers only")
+    cached = fundamentals_cache.get(ticker)
+    if cached and time.time() - cached[0] < FUNDAMENTALS_TTL_SECONDS:
+        return cached[1]
+    try:
+        result = get_fundamentals(ticker)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    fundamentals_cache[ticker] = (time.time(), result)
+    return result
+
+
+class PortfolioRequest(BaseModel):
+    tickers: list[str]
+    years: int = 5
+    benchmark: str = "SPY"
+
+
+PORTFOLIO_TTL_SECONDS = 6 * 60 * 60
+portfolio_cache: dict[tuple, tuple[float, dict]] = {}
+
+
+@app.post("/portfolio/optimize", dependencies=[Depends(require_key)])
+def optimize_portfolio(body: PortfolioRequest):
+    """Five allocation methods (skfolio), scored walk-forward with empyrical metrics."""
+    import yfinance as yf
+    from openstock_analyst.portfolio import optimize
+
+    tickers = sorted({t.strip().upper() for t in body.tickers})
+    benchmark = body.benchmark.strip().upper()
+    if not 2 <= len(tickers) <= 12 or not all(TICKER_PATTERN.match(t) for t in tickers + [benchmark]):
+        raise HTTPException(status_code=422, detail="Pick 2 to 12 valid tickers")
+    years = max(2, min(body.years, 10))
+    key = (tuple(tickers), years, benchmark)
+    cached = portfolio_cache.get(key)
+    if cached and time.time() - cached[0] < PORTFOLIO_TTL_SECONDS:
+        return cached[1]
+
+    prices = yf.download(tickers + [benchmark], period=f"{years}y", auto_adjust=True, progress=False)["Close"]
+    missing = [t for t in tickers if t not in prices.columns or prices[t].dropna().empty]
+    if missing:
+        raise HTTPException(status_code=404, detail=f"No price history for {', '.join(missing)}")
+    try:
+        result = optimize(prices[tickers], prices[benchmark])
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    result = {"benchmark_ticker": benchmark, "years": years, **result}
+    portfolio_cache[key] = (time.time(), result)
     return result
 
 

@@ -10,6 +10,9 @@ requires-python = ">=3.11"
 # fastapi and uvicorn are left unpinned so they fit a Gradio Space's preinstalled versions
 dependencies = [
     "tradingagents @ git+https://github.com/TauricResearch/TradingAgents@v0.6.0",
+    "edgartools>=5.62",
+    "skfolio>=1.8",
+    "empyrical-reloaded>=0.5.12",
     "fastapi>=0.110",
     "uvicorn>=0.29",
 ]

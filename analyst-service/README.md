@@ -14,7 +14,9 @@ All routes except `/` need the `X-Analyst-Key` header.
 | `POST /analyses` `{"ticker": "AAPL", "date": "2026-10-15"}` | queues a run, returns `{"id", "status"}` |
 | `GET /analyses/{id}` | `status` is `queued`, `running`, `done` (with `rating`, `report_html`, `report_md`) or `error` |
 | `GET /signals/{ticker}` | 10/21 EMA + Supertrend (10,3) checklist on daily Yahoo Finance candles, cached 15 minutes |
-| `GET /backtest/{ticker}?years=5` | Replays the strategy over 1–10 years (next-open fills, 0.1% cost per side) with stats, weekly equity vs buy & hold and every trade, cached 6 hours |
+| `GET /backtest/{ticker}?years=5` | Replays the strategy over 1–10 years (next-open fills, 0.1% cost per side) with stats, weekly equity vs buy & hold and every trade, plus Sharpe, Sortino, Calmar and alpha/beta vs SPY ([empyrical](https://github.com/stefan-jansen/empyrical-reloaded)), cached 6 hours |
+| `GET /fundamentals/{ticker}` | US filers only: three years of 10-K figures with margins and growth, open-market insider buys and sells (Form 4, last 180 days, 10b5-1 flagged) and the latest filings, all from SEC EDGAR via [edgartools](https://github.com/dgunning/edgartools), cached 12 hours |
+| `POST /portfolio/optimize` `{"tickers": ["AAPL", "MSFT"], "years": 5}` | Max Sharpe, min variance, hierarchical risk parity, risk parity and equal weight ([skfolio](https://github.com/skfolio/skfolio)), each scored walk-forward (fit 252 days, hold 63) against SPY, with weights, efficient frontier and correlations, cached 6 hours |
 
 Jobs live in memory for 24 hours; one run at a time by default (`ANALYST_CONCURRENCY`).
 
@@ -24,6 +26,7 @@ Jobs live in memory for 24 hours; one run at a time by default (`ANALYST_CONCURR
 |---|---|
 | `ANALYST_API_KEY` | shared secret; Tradebook sends the same value |
 | `GOOGLE_API_KEY` | Gemini key from https://aistudio.google.com/apikey |
+| `SEC_IDENTITY` | optional, `"Your Name you@example.com"`; the SEC asks every EDGAR client to identify itself |
 | `TRADINGAGENTS_QUICK_THINK_LLM` | optional, default `gemini-3.5-flash-lite` |
 | `TRADINGAGENTS_DEEP_THINK_LLM` | optional, default `gemini-3.8-flash` |
 
