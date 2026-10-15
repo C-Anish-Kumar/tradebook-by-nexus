@@ -3,6 +3,7 @@ import { CandlestickChart } from "lucide-react";
 import TradingViewWidget from "@/components/TradingViewWidget";
 import StockHeader, { StockHeaderSkeleton } from "@/components/stocks/StockHeader";
 import StockSentimentCard from "@/components/stocks/StockSentimentCard";
+import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import Panel from "@/components/Panel";
 import {
     CANDLE_CHART_WIDGET_CONFIG,
@@ -11,6 +12,8 @@ import {
     COMPANY_FINANCIALS_WIDGET_CONFIG,
 } from "@/lib/constants";
 import { getStockSentimentInsights } from '@/lib/actions/adanos.actions';
+import { getLatestAnalysis } from '@/lib/actions/analysis.actions';
+import { analystEnabled } from '@/lib/analyst';
 import { formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils';
 
 const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
@@ -21,6 +24,16 @@ async function Sentiment({ symbol }: { symbol: string }) {
     return (
         <Panel title="Sentiment" sub="Reddit, X.com, news and Polymarket">
             <StockSentimentCard insight={insight} />
+        </Panel>
+    );
+}
+
+async function AIAnalyst({ symbol }: { symbol: string }) {
+    if (!analystEnabled || symbol.includes(':')) return null; // stocks only; crypto pairs carry an exchange prefix
+    const latest = await getLatestAnalysis(symbol);
+    return (
+        <Panel title="AI Analyst" sub="Agents debate the stock and settle on a rating">
+            <AIAnalystPanel symbol={symbol} initial={latest} />
         </Panel>
     );
 }
@@ -80,6 +93,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                             height={400}
                         />
                     </Panel>
+                    <Suspense fallback={null}>
+                        <AIAnalyst symbol={symbol} />
+                    </Suspense>
                     <Suspense fallback={null}>
                         <Sentiment symbol={symbol} />
                     </Suspense>
