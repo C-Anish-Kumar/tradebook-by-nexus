@@ -1,0 +1,2 @@
+[console_scripts]
+openstock-analyst = openstock_analyst.server:main

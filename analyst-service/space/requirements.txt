@@ -1,0 +1,1 @@
+openstock-analyst @ git+https://github.com/C-Anish-Kumar/OpenStock#subdirectory=analyst-service

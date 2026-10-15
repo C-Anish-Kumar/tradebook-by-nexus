@@ -119,3 +119,9 @@ def get_analysis(job_id: str):
         if job is None:
             raise HTTPException(status_code=404, detail="Unknown job")
         return dict(job)
+
+
+def main():
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT") or os.environ.get("GRADIO_SERVER_PORT") or 7860))

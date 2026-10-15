@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+openstock_analyst/__init__.py
+openstock_analyst/server.py
+openstock_analyst.egg-info/PKG-INFO
+openstock_analyst.egg-info/SOURCES.txt
+openstock_analyst.egg-info/dependency_links.txt
+openstock_analyst.egg-info/entry_points.txt
+openstock_analyst.egg-info/requires.txt
+openstock_analyst.egg-info/top_level.txt

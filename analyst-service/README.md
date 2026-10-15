@@ -29,15 +29,20 @@ Any other `TRADINGAGENTS_*` variable from TradingAgents works too (another provi
 
 ## Hosting on Hugging Face Spaces (free)
 
-1. https://huggingface.co/new-space → SDK **Docker**, template **Blank**, hardware **CPU basic (free)**.
-2. In the Space, **Files → Add file → Create a new file** named `Dockerfile` with the contents of
-   [`huggingface.Dockerfile`](huggingface.Dockerfile).
+Docker Spaces need a paid plan, but a Gradio Space runs any `app.py`, so the service installs as a package
+there and serves its own API on port 7860.
+
+1. https://huggingface.co/new-space → SDK **Gradio**, template **Blank**, hardware **CPU basic (free)**.
+2. Replace the Space's `README.md`, `app.py` and `requirements.txt` with the files in [`space/`](space/)
+   (**Files → Add file → Create a new file**, or edit each file in the browser). The README sets
+   `python_version: "3.12"`, which TradingAgents needs.
 3. **Settings → Variables and secrets**: add the secrets `ANALYST_API_KEY` and `GOOGLE_API_KEY`.
 4. The Space URL is `https://<user>-<space>.hf.space`. In Vercel set `ANALYST_SERVICE_URL` to it and
    `ANALYST_API_KEY` to the same secret, then redeploy. For a private Space also set
    `ANALYST_HF_TOKEN` to a Hugging Face read token.
 
-To pick up changes pushed to this folder, use **Settings → Factory rebuild** in the Space.
+`requirements.txt` installs this folder from the fork's `main`; use **Settings → Factory rebuild** in the
+Space to pick up changes.
 
 ## Running locally
 

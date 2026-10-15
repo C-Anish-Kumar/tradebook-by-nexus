@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openstock-analyst"
+version = "0.1.0"
+description = "HTTP wrapper around TradingAgents for OpenStock's AI Analyst"
+requires-python = ">=3.11"
+# fastapi and uvicorn are left unpinned so they fit a Gradio Space's preinstalled versions
+dependencies = [
+    "tradingagents @ git+https://github.com/TauricResearch/TradingAgents@v0.6.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+
+[project.scripts]
+openstock-analyst = "openstock_analyst.server:main"
+
+[tool.setuptools]
+packages = ["openstock_analyst"]
