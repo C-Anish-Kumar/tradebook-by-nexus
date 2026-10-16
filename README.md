@@ -23,6 +23,8 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Macro dashboard**: a fear & greed gauge, the US Treasury yield curve and the economic calendar
 - **Earnings calendar**: upcoming reports for your watchlist with beat/miss, the week's biggest reporters,
   and a countdown on each stock page
+- **Telegram messages**: price alerts, a daily watchlist summary, strategy signal changes and earnings
+  reminders, sent by your own Telegram bot (connect from the Profile page)
 - **Market overview**: sector heatmap, movers, top stories and sentiment from Reddit, X.com, news and Polymarket
 - **Emails**: AI-written welcome email and a weekly news digest
 
@@ -57,6 +59,8 @@ empyrical on a Hugging Face Space
 | `NEXUS_SERVICE_URL`, `NEXUS_API_KEY` | optional, the Nexus Space and its shared secret; turns on RL Lab |
 | `NEXUS_HF_TOKEN` | optional, only if the Nexus Space is private |
 | `GEMINI_API_KEY` | AI-written emails and the market brief |
+| `TELEGRAM_BOT_TOKEN` | optional, from [@BotFather](https://t.me/BotFather); turns on Telegram messages |
+| `TELEGRAM_WEBHOOK_SECRET` | with the token: any random string (`openssl rand -hex 24`); Telegram sends it back so the webhook knows the call is genuine. After adding both, send the Inngest event `app/telegram.setup` once |
 | `FRED_API_KEY` | optional, free from https://fred.stlouisfed.org/docs/api/api_key.html; turns on the economic calendar |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | optional, shows support email links on Help and Terms |
 

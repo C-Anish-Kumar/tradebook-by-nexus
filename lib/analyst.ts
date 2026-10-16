@@ -56,19 +56,22 @@ export type StrategySignals = {
     add_backs: StrategyCheck[];
 };
 
+// Fresh read from the service (no cache); background jobs use this directly
+export async function fetchStrategySignals(ticker: string, timeoutMs = 20_000): Promise<StrategySignals> {
+    const res = await fetch(`${SERVICE_URL}/signals/${encodeURIComponent(ticker)}`, {
+        headers: serviceHeaders(),
+        cache: 'no-store',
+        // A sleeping Space can take a minute to wake; don't hold the page that long
+        signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`signals ${res.status}`);
+    return res.json() as Promise<StrategySignals>;
+}
+
 // Daily-candle strategy checklist, shared by everyone. Stored in MongoDB so a sleeping Space never blanks the panel.
 export async function getStrategySignals(ticker: string): Promise<StrategySignals | null> {
     if (!analystEnabled) return null;
-    return cached(`signals:${ticker}`, 15 * 60_000, async () => {
-        const res = await fetch(`${SERVICE_URL}/signals/${encodeURIComponent(ticker)}`, {
-            headers: serviceHeaders(),
-            cache: 'no-store',
-            // A sleeping Space can take a minute to wake; don't hold the page that long
-            signal: AbortSignal.timeout(20_000),
-        });
-        if (!res.ok) throw new Error(`signals ${res.status}`);
-        return res.json() as Promise<StrategySignals>;
-    });
+    return cached(`signals:${ticker}`, 15 * 60_000, () => fetchStrategySignals(ticker));
 }
 
 export type BacktestTrade = {

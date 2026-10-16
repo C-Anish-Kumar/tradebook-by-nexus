@@ -302,6 +302,13 @@ export const checkStockAlerts = inngest.createFunction(
                                 : { id: alert.userId }
                         );
 
+                        // Telegram first: it doesn't depend on email being configured
+                        const { sendAlertTelegram } = await import("@/lib/notify");
+                        const texted = await sendAlertTelegram(alert.userId, alert, currentPrice).catch((e) => {
+                            console.error(`telegram alert failed for ${alert._id}`, e);
+                            return false;
+                        });
+
                         if (user?.email) {
                             const result = await sendStockAlertEmail({
                                 email: user.email,
@@ -310,9 +317,9 @@ export const checkStockAlerts = inngest.createFunction(
                                 targetPrice: alert.targetPrice,
                                 condition: alert.condition,
                             });
-                            // Email not configured: release so the alert fires once email works
-                            if (result.status === 'skipped') await release();
-                        } else {
+                            // Nothing delivered (email not configured, no Telegram): release so the alert fires later
+                            if (result.status === 'skipped' && !texted) await release();
+                        } else if (!texted) {
                             console.warn(`⚠️ No email for user ${alert.userId}; closing alert ${alert._id} without notifying`);
                         }
                     } catch (error) {

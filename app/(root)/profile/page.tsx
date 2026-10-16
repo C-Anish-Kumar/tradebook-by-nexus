@@ -4,6 +4,8 @@ import { Bell, KeyRound, ShieldCheck, Star } from "lucide-react";
 import Panel from "@/components/Panel";
 import ProfileForm from "@/components/profile/ProfileForm";
 import PasswordForm from "@/components/profile/PasswordForm";
+import TelegramPanel from "@/components/profile/TelegramPanel";
+import { getTelegramStatus } from "@/lib/actions/notification.actions";
 import { auth, getSession } from "@/lib/better-auth/auth";
 import { getUserWatchlist } from "@/lib/actions/watchlist.actions";
 import { getUserAlerts } from "@/lib/actions/alert.actions";
@@ -22,10 +24,11 @@ export default async function ProfilePage() {
     if (!session?.user) redirect('/sign-in');
     const { user } = session;
 
-    const [accounts, watchlist, alerts] = await Promise.all([
+    const [accounts, watchlist, alerts, telegram] = await Promise.all([
         auth.api.listUserAccounts({ headers: await headers() }).catch(() => []),
         getUserWatchlist(),
         getUserAlerts(),
+        getTelegramStatus(),
     ]);
     const linked = new Set(accounts.map((a: { providerId: string }) => a.providerId));
     const activeAlerts = alerts.filter((a: { triggered?: boolean }) => !a.triggered).length;
@@ -73,6 +76,9 @@ export default async function ProfilePage() {
                 </Panel>
 
                 <div className="flex min-w-0 flex-col gap-3">
+                    <Panel title="Telegram" sub="Watchlist alerts and updates on your phone">
+                        <TelegramPanel initial={telegram} />
+                    </Panel>
                     <Panel title="Sign-in methods" sub="Ways you can get into this account">
                         <ul className="row-list">
                             {[...linked].map((id) => (
