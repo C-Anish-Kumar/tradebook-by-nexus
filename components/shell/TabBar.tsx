@@ -16,6 +16,7 @@ const PAGE_LABELS: Record<string, string> = {
     '/dashboard': 'Overview',
     '/watchlist': 'Watchlist',
     '/portfolio': 'Portfolio Lab',
+    '/rl-lab': 'RL Lab',
     '/profile': 'Profile',
 };
 
