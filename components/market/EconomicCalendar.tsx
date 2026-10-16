@@ -13,8 +13,10 @@ export default function EconomicCalendar({ events }: { events: EconomicEvent[] }
             {events.map((e) => (
                 <li key={`${e.date}-${e.name}`} className="flex items-center gap-3 rounded-[8px] px-2 py-2">
                     <span className="num w-[92px] shrink-0 text-[12.5px] text-muted-foreground">{day(e.date)}</span>
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{e.name}</span>
-                    {e.high && <span className="pill is-brand">Market mover</span>}
+                    <span className="min-w-0 flex-1 text-[13px] font-semibold">
+                        {e.name}
+                        {e.high && <span className="pill is-brand ml-2 align-middle">Key</span>}
+                    </span>
                     <span className="hidden w-[76px] shrink-0 text-right text-[12px] text-faint sm:block">{inDays(e.date)}</span>
                 </li>
             ))}

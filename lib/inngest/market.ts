@@ -11,11 +11,13 @@ export const keepAnalystAwake = inngest.createFunction(
 // Precompute market-wide panels so pages only ever read MongoDB
 export const refreshMarketData = inngest.createFunction(
     { id: 'refresh-market-data', concurrency: 1, triggers: [{ event: 'app/market.refresh' }, { cron: '7 * * * *' }] }, // hourly
-    async ({ step }) => {
+    async ({ event, step }) => {
         const macro = await step.run('macro-snapshot', () => refreshMacroSnapshot());
-        // Earnings dates move slowly; every 6 hours is plenty
-        const hour = new Date().getUTCHours();
-        const earnings = hour % 6 === 0 ? await step.run('earnings-calendar', () => refreshEarningsCalendar()) : 'skipped';
+        // Earnings dates move slowly; every 6 hours is plenty, or whenever someone asks
+        const manual = event.name === 'app/market.refresh' || event.name === 'inngest/function.invoked';
+        const earnings = manual || new Date().getUTCHours() % 6 === 0
+            ? await step.run('earnings-calendar', () => refreshEarningsCalendar())
+            : 'skipped';
         return { macro, earnings };
     },
 );

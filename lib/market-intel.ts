@@ -37,12 +37,32 @@ export type EarningsEvent = {
 };
 export type EarningsCalendar = { from: string; to: string; events: EarningsEvent[] };
 
+// Finnhub caps each response, and a month of earnings season overflows it, so ask in short windows
+const EARNINGS_CHUNK_DAYS = 3;
+const EARNINGS_CAP = 1500;
+
+async function earningsWindow(from: string, to: string): Promise<EarningsEvent[]> {
+    const { earningsCalendar = [] } = await finnhub<{ earningsCalendar?: EarningsEvent[] }>(`/calendar/earnings?from=${from}&to=${to}`);
+    // A full page may be truncated: split the window in half and ask again
+    if (earningsCalendar.length >= EARNINGS_CAP && from !== to) {
+        const mid = isoDay(new Date((new Date(from).getTime() + new Date(to).getTime()) / 2));
+        const next = isoDay(new Date(new Date(mid).getTime() + 86_400_000));
+        return [...await earningsWindow(from, mid), ...await earningsWindow(next, to)];
+    }
+    return earningsCalendar;
+}
+
 async function loadEarningsCalendar(): Promise<EarningsCalendar> {
     // Last week (for beat/miss) through the next three weeks
     const from = daysFromNow(-7), to = daysFromNow(21);
-    const { earningsCalendar = [] } = await finnhub<{ earningsCalendar?: EarningsEvent[] }>(`/calendar/earnings?from=${from}&to=${to}`);
-    const events = earningsCalendar
+    const raw: EarningsEvent[] = [];
+    for (let offset = -7; offset <= 21; offset += EARNINGS_CHUNK_DAYS) {
+        raw.push(...await earningsWindow(daysFromNow(offset), daysFromNow(Math.min(offset + EARNINGS_CHUNK_DAYS - 1, 21))));
+    }
+    const seen = new Set<string>();
+    const events = raw
         .filter((e) => e.symbol && e.date && !e.symbol.includes('.'))
+        .filter((e) => !seen.has(`${e.symbol}:${e.date}`) && seen.add(`${e.symbol}:${e.date}`))
         .map((e) => ({
             symbol: e.symbol, date: e.date, hour: e.hour ?? '',
             epsEstimate: e.epsEstimate ?? null, epsActual: e.epsActual ?? null,
@@ -179,9 +199,8 @@ async function loadFearGreed(): Promise<FearGreed> {
     };
 }
 
-// FRED release ids for the reports that move markets most
+// FRED release ids for the reports that move markets most (FOMC comes from the Fed's own calendar)
 const RELEASES: Record<number, { name: string; high: boolean }> = {
-    101: { name: 'Fed rate decision (FOMC)', high: true },
     10: { name: 'Consumer prices (CPI)', high: true },
     50: { name: 'Jobs report', high: true },
     53: { name: 'GDP', high: true },
@@ -193,25 +212,74 @@ const RELEASES: Record<number, { name: string; high: boolean }> = {
 };
 export type EconomicEvent = { date: string; name: string; high: boolean };
 
-// The release calendar is the one FRED call that needs a (free) key
+const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+/**
+ * Fed rate decision days from federalreserve.gov's FOMC calendar page. Each meeting is a month label
+ * ("October", "Apr/May") and a day range ("27-28", "17-18*"); the decision is announced on the last day.
+ */
+export function parseFomcDates(html: string): string[] {
+    const out: string[] = [];
+    let year: number | null = null, month: string | null = null;
+    const re = /(\d{4}) FOMC Meetings|fomc-meeting__month[^>]*>\s*<strong>([^<]+)<\/strong>|fomc-meeting__date[^>]*>([^<]+)</g;
+    for (const m of html.matchAll(re)) {
+        if (m[1]) year = Number(m[1]);
+        else if (m[2]) month = m[2].trim();
+        else if (m[3] && year && month) {
+            const text = m[3].trim();
+            if (/notation|unscheduled|cancel/i.test(text)) continue;
+            const days = text.replace(/[^\d-]/g, '').split('-').filter(Boolean).map(Number);
+            if (!days.length) continue;
+            const months = month.toLowerCase().split('/').map((p) => MONTHS.findIndex((n) => n.startsWith(p.trim().slice(0, 3))));
+            // "Apr/May 30-1": the last day falls in the second month
+            const mi = months.length > 1 && days.length > 1 && days[1] < days[0] ? months[1] : months[0];
+            if (mi < 0) continue;
+            out.push(`${year}-${String(mi + 1).padStart(2, '0')}-${String(days.at(-1)).padStart(2, '0')}`);
+        }
+    }
+    return [...new Set(out)].sort();
+}
+
+async function loadFomcDates(): Promise<string[]> {
+    const res = await fetch('https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Tradebook market calendar)' },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) throw new Error(`Fed calendar ${res.status}`);
+    return parseFomcDates(await res.text());
+}
+
+// FRED's release calendar needs a (free) key; the Fed's meeting dates don't
 async function loadEconomicCalendar(): Promise<EconomicEvent[] | null> {
     const key = process.env.FRED_API_KEY;
-    if (!key) return null;
+    const today = daysFromNow(0), end = daysFromNow(35);
+    const fomc = (await loadFomcDates().catch((error) => { console.error('FOMC calendar failed', error); return []; }))
+        .filter((d) => d >= today && d <= end)
+        .map((date) => ({ date, name: 'Fed rate decision (FOMC)', high: true }));
+    if (!key) return fomc.length ? fomc : null;
+
     const params = new URLSearchParams({
-        api_key: key, file_type: 'json', realtime_start: daysFromNow(0), realtime_end: daysFromNow(35),
+        api_key: key, file_type: 'json', realtime_start: today, realtime_end: end,
         include_release_dates_with_no_data: 'true', sort_order: 'asc', limit: '1000',
     });
     const res = await fetch(`https://api.stlouisfed.org/fred/releases/dates?${params}`, { cache: 'no-store', signal: AbortSignal.timeout(20_000) });
     if (!res.ok) throw new Error(`FRED calendar ${res.status}`);
     const { release_dates = [] } = await res.json() as { release_dates?: { release_id: number; date: string }[] };
     const seen = new Set<string>();
-    return release_dates.flatMap((r) => {
+    const releases = release_dates.flatMap((r) => {
         const info = RELEASES[r.release_id];
         const id = `${r.release_id}:${r.date}`;
         if (!info || seen.has(id)) return [];
         seen.add(id);
         return [{ date: r.date, name: info.name, high: info.high }];
-    }).slice(0, 14);
+    });
+    // Weekly jobless claims would crowd out the monthly reports; keep the next two
+    let claims = 0;
+    return [...fomc, ...releases]
+        .sort((a, b) => a.date.localeCompare(b.date) || Number(b.high) - Number(a.high))
+        .filter((e) => e.name !== 'Jobless claims' || claims++ < 2)
+        .slice(0, 12);
 }
 
 export type MacroSnapshot = {

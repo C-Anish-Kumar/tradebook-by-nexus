@@ -11,6 +11,7 @@ import {
     marketOverviewConfig,
     marketQuotesConfig,
     timelineConfig,
+    POPULAR_STOCKS,
 } from "@/lib/constants";
 import { MARKETS, MARKET_COOKIE, LEGACY_MARKET_COOKIE, getMarket, isMarketOpen, marketForCountry } from "@/lib/markets";
 import { getSession } from "@/lib/better-auth/auth";
@@ -47,15 +48,21 @@ async function Macro() {
     );
 }
 
+const POPULAR_SYMBOLS = new Set(POPULAR_STOCKS.map((s) => s.symbol));
+
 // The week's biggest reports, ranked by expected revenue
 async function EarningsWeek() {
     const cal = await getEarningsCalendar();
     if (!cal) return null;
     const today = new Date().toISOString().slice(0, 10);
     const weekOut = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
-    const events = cal.events.filter((e) => e.date >= today && e.date <= weekOut && e.revenueEstimate)
-        .sort((a, b) => (b.revenueEstimate ?? 0) - (a.revenueEstimate ?? 0)).slice(0, 10)
-        .sort((a, b) => a.date.localeCompare(b.date));
+    const upcoming = cal.events.filter((e) => e.date >= today && e.date <= weekOut);
+    const withRevenue = upcoming.filter((e) => e.revenueEstimate);
+    // Rank by expected revenue; if Finnhub sent no estimates, fall back to well-known names
+    const ranked = withRevenue.length >= 3
+        ? withRevenue.sort((a, b) => (b.revenueEstimate ?? 0) - (a.revenueEstimate ?? 0))
+        : upcoming.filter((e) => POPULAR_SYMBOLS.has(e.symbol));
+    const events = ranked.slice(0, 10).sort((a, b) => a.date.localeCompare(b.date));
     return (
         <Panel title="Earnings this week" sub="Largest companies reporting in the next 7 days">
             <EarningsList events={events} empty="No large companies report in the next 7 days." />
