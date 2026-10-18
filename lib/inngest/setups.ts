@@ -5,6 +5,8 @@ import { readCache, writeCache } from '@/lib/cache';
 import { analystEnabled, fetchSetup } from '@/lib/analyst';
 import { linkedUsers, notify, stockLink, watchlistsFor } from '@/lib/notify';
 import { setupMessage, transition, type SetupStatus, type StoredSetup } from '@/lib/setups';
+import { ForwardTrade } from '@/database/models/forward-trade.model';
+import { evaluateTrade } from '@/lib/forward-test';
 import { scannerStrategies, setupCacheKey, setupStateKey, type Strategy } from '@/lib/strategies';
 import { isScannable } from '@/lib/symbols';
 
@@ -40,6 +42,7 @@ export const scanSetups = inngest.createFunction(
 
         const universe = symbols.length * strategies.length;
         const changes: Change[] = [];
+        const fresh: { symbol: string; strategy: Strategy; stored: StoredSetup }[] = [];
         let failed = 0;
 
         for (const symbol of symbols) {
@@ -58,9 +61,41 @@ export const scanSetups = inngest.createFunction(
                     }
                 });
                 if (!result.ok) failed++;
-                else if (result.kind) changes.push({ symbol, strategy, kind: result.kind, stored: result.stored });
+                else if (result.stored.setup.status === 'entry') fresh.push({ symbol, strategy, stored: result.stored });
+                if (result.ok && result.kind) changes.push({ symbol, strategy, kind: result.kind, stored: result.stored });
             }
         }
+
+        // Forward test: log every entry the scanner shows as a paper trade, then judge open ones on the newest closes
+        const forward = await step.run('forward-test', async () => {
+            try {
+                await connectToDatabase();
+                let opened = 0, closed = 0;
+                for (const f of fresh) {
+                    const plan = f.stored.setup.plan;
+                    if (!plan) continue;
+                    const exists = await ForwardTrade.exists({ strategy: f.strategy.id, symbol: f.symbol, $or: [{ outcome: 'open' }, { signalDate: f.stored.setup.date }] });
+                    if (exists) continue;
+                    await ForwardTrade.create({
+                        strategy: f.strategy.id, symbol: f.symbol, signalDate: f.stored.setup.date,
+                        entry: plan.entry, stop: plan.stop, target2r: plan.target_2r,
+                        score: f.stored.setup.quant?.score ?? null, validated: f.stored.setup.evidence.validated,
+                    });
+                    opened++;
+                }
+                for (const trade of await ForwardTrade.find({ outcome: 'open' })) {
+                    const latest = (await readCache<StoredSetup>(setupCacheKey(trade.strategy as Strategy['id'], trade.symbol)))?.value?.setup;
+                    const update = latest && evaluateTrade(trade, latest);
+                    if (!update) continue;
+                    await ForwardTrade.updateOne({ _id: trade._id }, { $set: update });
+                    if (update.outcome !== 'open') closed++;
+                }
+                return { opened, closed };
+            } catch (error) {
+                console.error('forward test update failed', error);
+                return { opened: 0, closed: 0 };
+            }
+        });
 
         const sent = await step.run('notify', async () => {
             let count = 0;
@@ -83,6 +118,6 @@ export const scanSetups = inngest.createFunction(
             return count;
         });
 
-        return { scanned: symbols.length, strategies: strategies.map((s) => s.id), failed, changes: changes.map((c) => `${c.strategy.id} ${c.symbol}: ${c.kind}`), sent };
+        return { scanned: symbols.length, forward, strategies: strategies.map((s) => s.id), failed, changes: changes.map((c) => `${c.strategy.id} ${c.symbol}: ${c.kind}`), sent };
     },
 );

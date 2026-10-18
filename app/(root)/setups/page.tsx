@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { Crosshair } from 'lucide-react';
 import { analystEnabled } from '@/lib/analyst';
-import { getSetupBoard } from '@/lib/actions/setups.actions';
+import { getForwardTest, getSetupBoard } from '@/lib/actions/setups.actions';
+import ForwardTest from '@/components/setups/ForwardTest';
 import SetupsBoard from '@/components/setups/SetupsBoard';
 import Panel from '@/components/Panel';
 import { scannerStrategies } from '@/lib/strategies';
@@ -14,6 +15,7 @@ export default async function SetupsPage({ searchParams }: { searchParams: Promi
     const strategies = scannerStrategies();
     const active = strategies.find((s) => s.id === wanted) ?? strategies[0];
     const rows = analystEnabled && active ? await getSetupBoard(active.id) : [];
+    const forward = analystEnabled && active ? await getForwardTest().catch(() => null) : null;
 
     return (
         <>
@@ -36,7 +38,10 @@ export default async function SetupsPage({ searchParams }: { searchParams: Promi
                 </nav>
             )}
             {analystEnabled && active ? (
-                <SetupsBoard rows={rows} />
+                <div className="flex flex-col gap-3">
+                    <SetupsBoard rows={rows} />
+                    {forward && <ForwardTest {...forward} />}
+                </div>
             ) : (
                 <Panel>
                     <div className="empty-state py-14">
