@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import Panel from '@/components/Panel';
 import { requestSetupScan, type SetupRow } from '@/lib/actions/setups.actions';
 import { QuantBadge, QuantBreakdown } from '@/components/setups/QuantBadge';
-import { STATUS_LABEL, sizeShares, sortSetups } from '@/lib/setups';
+import { daysUntil, MAX_POSITIONS, STATUS_LABEL, sizeShares, sortSetups } from '@/lib/setups';
+import { currencyOf, isCanadian } from '@/lib/symbols';
 import { cn } from '@/lib/utils';
 
 const fmt = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -46,6 +47,8 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
     const acct = Number(account);
     const risk = Number(riskPct);
     const sorted = sortSetups(rows.map((r) => ({ ...r, setup: r.stored?.setup ?? null })));
+    // Swing limit: at most MAX_POSITIONS open at once, so only the top-ranked fresh entries are actionable
+    const entries = sorted.filter((r) => r.setup?.status === 'entry').map((r) => r.symbol);
 
     return (
         <div className="flex flex-col gap-3">
@@ -74,7 +77,7 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
                 <Panel><div className="empty-state py-12"><h3>No US stocks on your watchlist</h3><p className="text-[13px]">Star a few stocks, then scan.</p></div></Panel>
             )}
 
-            {sorted.map(({ symbol, stored, setup }) => (
+            {sorted.map(({ symbol, stored, setup, earningsDate }) => (
                 <Panel key={symbol}>
                     <div className="flex flex-col gap-3 p-4">
                         <div className="flex flex-wrap items-center gap-2">
@@ -109,13 +112,24 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
                                         ))}
                                     </dl>
                                     <p className="text-[13px] text-muted-foreground">
-                                        {size ? <>At {risk}% risk on {fmt(acct)}: <b className="num text-foreground">{size.shares} shares</b> (cost {fmt(size.cost)}, risk {fmt(size.risk)}){!size.fits && <span className="text-warn"> · more than your account</span>}. </>
+                                        {size ? <>At {risk}% risk on {fmt(acct)}: <b className="num text-foreground">{size.affordable ? size.shares : 0} shares</b> (cost {fmt(size.cost)}, risk {fmt(size.risk)}){size.capped && <span className="text-warn"> · limited by your cash, so risk is lower than {risk}%</span>}{!size.affordable && <span className="text-warn"> · one share costs more than your account</span>}. </>
                                               : <>Enter an account size to see share count. </>}
                                         Exit: {p.exit_rule}.
                                     </p>
                                 </>
                             );
                         })()}
+
+                        {setup?.status === 'entry' && entries.indexOf(symbol) >= MAX_POSITIONS && (
+                            <p className="text-[12px] text-warn">Skip for now: {entries.length} fresh entries, and the limit is {MAX_POSITIONS} open positions at once. Take the top {MAX_POSITIONS} by score.</p>
+                        )}
+                        {setup && earningsDate && (() => {
+                            const d = daysUntil(earningsDate);
+                            return d !== null && d <= 10 && (
+                                <p className="text-[12px] text-warn">Earnings {d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`} ({earningsDate}). A report can gap price through the stop; many traders skip entries before it.</p>
+                            );
+                        })()}
+                        {isCanadian(symbol) && <p className="text-[12px] text-faint">Toronto listing: prices and share counts are in {currencyOf(symbol)}.</p>}
 
                         {setup && setup.warnings.length > 0 && (
                             <ul className="flex list-disc flex-col gap-0.5 pl-5 text-[12px] text-faint">

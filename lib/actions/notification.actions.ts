@@ -8,7 +8,7 @@ import { NotificationSettings, type NotificationPrefs } from '@/database/models/
 import { getBotUsername, sendTelegram, telegramEnabled } from '@/lib/telegram';
 import { buildWatchlistSummary, watchlistsFor } from '@/lib/notify';
 
-export type TelegramStatus = { enabled: boolean; connected: boolean; name?: string; prefs: NotificationPrefs };
+export type TelegramStatus = { enabled: boolean; connected: boolean; name?: string; prefs: NotificationPrefs; minScore: number };
 const DEFAULT_PREFS: NotificationPrefs = {
     alerts: true, daily: true, signals: true, earnings: true,
     setups: false, maPullback: false, goldenCross: false, breakoutRetest: false, volumeBounce: false,
@@ -18,10 +18,10 @@ const PREF_KEYS = Object.keys(DEFAULT_PREFS) as (keyof NotificationPrefs)[];
 // Every action works on the signed-in user's own settings; nothing takes a user id from the client
 export async function getTelegramStatus(): Promise<TelegramStatus> {
     const userId = await requireUserId();
-    if (!telegramEnabled) return { enabled: false, connected: false, prefs: DEFAULT_PREFS };
+    if (!telegramEnabled) return { enabled: false, connected: false, prefs: DEFAULT_PREFS, minScore: 0 };
     await connectToDatabase();
     const s = await NotificationSettings.findOne({ userId }).lean();
-    return { enabled: true, connected: Boolean(s?.telegramChatId), name: s?.telegramName, prefs: { ...DEFAULT_PREFS, ...s?.prefs } };
+    return { enabled: true, connected: Boolean(s?.telegramChatId), name: s?.telegramName, prefs: { ...DEFAULT_PREFS, ...s?.prefs }, minScore: s?.minScore ?? 0 };
 }
 
 /** A one-time t.me link that ties the user's Telegram chat to this account when they press Start. */
@@ -49,6 +49,15 @@ export async function updateTelegramPrefs(input: Partial<NotificationPrefs>) {
     await connectToDatabase();
     await NotificationSettings.updateOne({ userId }, { $set }, { upsert: true });
     return { success: true };
+}
+
+/** Only message me about fresh entries scoring at least this (0-100). */
+export async function updateMinScore(value: number) {
+    const userId = await requireUserId();
+    const minScore = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
+    await connectToDatabase();
+    await NotificationSettings.updateOne({ userId }, { $set: { minScore } }, { upsert: true });
+    return { success: true, minScore };
 }
 
 export async function disconnectTelegram() {

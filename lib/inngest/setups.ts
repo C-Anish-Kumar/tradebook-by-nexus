@@ -6,9 +6,9 @@ import { analystEnabled, fetchSetup } from '@/lib/analyst';
 import { linkedUsers, notify, stockLink, watchlistsFor } from '@/lib/notify';
 import { setupMessage, transition, type SetupStatus, type StoredSetup } from '@/lib/setups';
 import { scannerStrategies, setupCacheKey, setupStateKey, type Strategy } from '@/lib/strategies';
+import { isScannable } from '@/lib/symbols';
 
 const MAX_SYMBOLS = 60; // one free analyst Space works through them one at a time
-const isUsStock = (s: string) => !s.includes(':') && !s.includes('.');
 
 type SetupState = { status: SetupStatus };
 type Change = { symbol: string; strategy: Strategy; kind: 'entry' | 'exit'; stored: StoredSetup };
@@ -34,7 +34,7 @@ export const scanSetups = inngest.createFunction(
         const symbols = await step.run('list-symbols', async () => {
             await connectToDatabase();
             const all = (await Watchlist.distinct('symbol')) as string[];
-            return [...new Set(all.map((s) => s.toUpperCase()).filter(isUsStock))].sort().slice(0, MAX_SYMBOLS);
+            return [...new Set(all.map((s) => s.toUpperCase()).filter(isScannable))].sort().slice(0, MAX_SYMBOLS);
         });
         if (!symbols.length) return { scanned: 0 };
 
@@ -72,7 +72,10 @@ export const scanSetups = inngest.createFunction(
                 const lists = await watchlistsFor(users.map((u) => u.userId));
                 for (const c of mine) {
                     for (const u of users) {
+                        // Exits always go out (you may hold it); fresh entries respect the user's minimum score
+                        const score = c.stored.setup.quant?.score ?? 0;
                         if ((lists.get(u.userId) ?? []).includes(c.symbol)
+                            && (c.kind === 'exit' || score >= (u.minScore ?? 0))
                             && await notify(u, setupMessage(stockLink(c.symbol), c.stored.setup, c.kind, strategy))) count++;
                     }
                 }

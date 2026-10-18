@@ -18,10 +18,12 @@ const quant = (score: number, capped = false): QuantScore => ({
 
 describe('sizeShares', () => {
     it('risks the chosen percent of the account, rounded down to whole shares', () => {
-        expect(sizeShares(1000, 1, 50, 48)).toEqual({ shares: 5, cost: 250, risk: 10, fits: true });
+        expect(sizeShares(1000, 1, 50, 48)).toEqual({ shares: 5, cost: 250, risk: 10, capped: false, affordable: true });
     });
-    it('flags positions larger than the account', () => {
-        expect(sizeShares(1000, 1, 100, 99.9)?.fits).toBe(false);
+    it('caps positions at what the account can buy', () => {
+        const s = sizeShares(1000, 1, 100, 99.9)!;
+        expect(s).toMatchObject({ shares: 10, capped: true });
+        expect(s.cost).toBeLessThanOrEqual(1000);
     });
     it('refuses nonsense inputs', () => {
         expect(sizeShares(0, 1, 50, 48)).toBeNull();

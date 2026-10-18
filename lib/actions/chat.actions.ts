@@ -9,8 +9,8 @@ import { getUserWatchlist } from '@/lib/actions/watchlist.actions';
 import { buildPrompt, cleanHistory, extractTickers, formatSetup, isBroadAsk } from '@/lib/chat';
 import { sortSetups, type Setup, type StoredSetup } from '@/lib/setups';
 import { scannerStrategies, setupCacheKey } from '@/lib/strategies';
+import { isScannable } from '@/lib/symbols';
 
-const isUsStock = (s: string) => !s.includes(':') && !s.includes('.');
 const LIVE_READ_MS = 25_000;   // a cold analyst Space can be slow; answer with what is ready instead of hanging
 const BOARD_ROWS = 12;
 
@@ -20,7 +20,7 @@ const within = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
 /** The signal facts the model may quote: the stocks named in the question, plus the best of the watchlist when it is a broad ask. */
 async function gatherData(question: string, watchlist: string[]): Promise<string> {
     const strategies = scannerStrategies();
-    const tickers = extractTickers(question, watchlist).filter(isUsStock);
+    const tickers = extractTickers(question, watchlist).filter(isScannable);
     const lines: string[] = [];
 
     for (const symbol of tickers) {
@@ -33,7 +33,7 @@ async function gatherData(question: string, watchlist: string[]): Promise<string
     }
 
     if (!tickers.length || isBroadAsk(question)) {
-        const board = (await Promise.all(watchlist.filter(isUsStock).flatMap((symbol) => strategies.map(async (strategy) => {
+        const board = (await Promise.all(watchlist.filter(isScannable).flatMap((symbol) => strategies.map(async (strategy) => {
             const setup = (await readCache<StoredSetup>(setupCacheKey(strategy.id, symbol)))?.value?.setup ?? null;
             return { symbol, strategy, setup };
         })))).filter((r) => r.setup && (r.setup.status === 'entry' || r.setup.status === 'watch'));
