@@ -3,6 +3,7 @@ import { NEWS_SUMMARY_EMAIL_PROMPT, PERSONALIZED_WELCOME_EMAIL_PROMPT } from "@/
 import { sendStockAlertEmail, sendWelcomeEmail } from "@/lib/nodemailer";
 import { callAIProviderWithFallback } from "@/lib/ai-provider";
 import { APP_URL } from "@/lib/brand";
+import { hasRealEmail } from '@/lib/mail-config';
 
 type KitSubscriber = { state?: string; email_address?: string; first_name?: string };
 // The fields the alert checker reads (Inngest serialises step results, so ids arrive as strings)
@@ -306,7 +307,7 @@ export const checkStockAlerts = inngest.createFunction(
                             return false;
                         });
 
-                        if (user?.email) {
+                        if (hasRealEmail(user?.email)) {
                             const result = await sendStockAlertEmail({
                                 email: user.email,
                                 symbol: alert.symbol,
@@ -384,7 +385,7 @@ export const checkInactiveUsers = inngest.createFunction(
             const sent: string[] = [];
 
             for (const user of inactiveUsers) {
-                if (!user.email) continue;
+                if (!hasRealEmail(user.email)) continue;
 
                 const firstName = user.name ? user.name.split(' ')[0] : 'Indiestocker';
                 const subject = `🔔 ${firstName}, opportunities are waiting for you`;

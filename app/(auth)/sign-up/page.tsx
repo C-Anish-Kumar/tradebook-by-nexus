@@ -36,11 +36,6 @@ const SignUp = () => {
     const onSubmit = async (data: SignUpFormData) => {
         try {
             const result = await signUpWithEmail(data);
-            if (result.success && result.verify) {
-                toast.success('Check your email', { description: 'Tap the link we sent to confirm your address, then sign in.' });
-                router.push('/sign-in');
-                return;
-            }
             if (result.success) {
                 router.push('/dashboard');
                 return;

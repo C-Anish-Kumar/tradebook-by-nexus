@@ -3,7 +3,6 @@
 import { auth } from "@/lib/better-auth/auth";
 import { inngest } from "@/lib/inngest/client";
 import { headers } from "next/headers";
-import { mailConfigured } from "@/lib/mail-config";
 
 export const signUpWithEmail = async ({ email, password, fullName, country }: SignUpFormData) => {
     try {
@@ -23,7 +22,7 @@ export const signUpWithEmail = async ({ email, password, fullName, country }: Si
             }
         }
 
-        return { success: true, verify: mailConfigured, data: response }
+        return { success: true, data: response }
     } catch (e) {
         console.log('Sign up failed', e)
         return { success: false, error: 'Sign up failed' }
@@ -55,8 +54,6 @@ export const signInWithEmail = async ({ email, password }: SignInFormData) => {
         return { success: true, data: response }
     } catch (e) {
         console.log('Sign in failed', e)
-        const code = (e as { body?: { code?: string } })?.body?.code;
-        if (code === 'EMAIL_NOT_VERIFIED') return { success: false, error: 'Confirm your email first. We just sent you a fresh link.' }
         return { success: false, error: 'Sign in failed' }
     }
 }

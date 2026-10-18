@@ -8,6 +8,7 @@ import { signOut } from "@/lib/actions/auth.actions";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/Logo";
 import { BRAND_FULL } from "@/lib/brand";
+import { hasRealEmail } from '@/lib/mail-config';
 
 type SidebarProps = {
     user: User;
@@ -101,7 +102,7 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
                     </span>
                     <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-semibold text-foreground">{user.name}</span>
-                        <span className="block truncate text-[12px] text-faint">{user.email}</span>
+                        <span className="block truncate text-[12px] text-faint">{hasRealEmail(user.email) ? user.email : 'Telegram sign-in'}</span>
                     </span>
                 </Link>
                 <button type="button" onClick={handleSignOut} className="icon-btn" title="Sign out" aria-label="Sign out">
