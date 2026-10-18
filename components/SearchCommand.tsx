@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { CommandDialog, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command"
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { searchStocks } from "@/lib/actions/finnhub.actions";
+import { searchStocks } from "@/lib/actions/search.actions";
 import { useDebounce } from "@/hooks/useDebounce";
 
 const OPEN_SEARCH_EVENT = 'open-search';

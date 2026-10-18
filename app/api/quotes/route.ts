@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/better-auth/auth";
-import { getLiveQuotes } from "@/lib/actions/finnhub.actions";
+import { getLiveQuotes } from "@/lib/finnhub";
 
 const MAX_SYMBOLS = 25;
 const SYMBOL_PATTERN = /^[A-Z0-9.:\-]{1,20}$/;

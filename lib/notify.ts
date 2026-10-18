@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/database/mongoose';
 import { NotificationSettings, type INotificationSettings, type NotificationPrefs } from '@/database/models/notification.model';
 import { Watchlist } from '@/database/models/watchlist.model';
 import { readCache } from '@/lib/cache';
-import { getLiveQuotes } from '@/lib/actions/finnhub.actions';
+import { getLiveQuotes } from '@/lib/finnhub';
 import { escapeHtml, sendTelegram, TelegramBlockedError, telegramEnabled } from '@/lib/telegram';
 import { APP_URL } from '@/lib/brand';
 import type { StrategySignals } from '@/lib/analyst';

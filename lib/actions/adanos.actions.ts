@@ -1,5 +1,4 @@
-'use server';
-
+// Server-side helper (no 'use server'): it is called from pages only, so it must not be a public endpoint.
 import {
     buildStockSentimentInsights,
     normalizeSourceInsight,

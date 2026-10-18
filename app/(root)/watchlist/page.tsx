@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { getUserWatchlist } from '@/lib/actions/watchlist.actions';
 import { getUserAlerts } from '@/lib/actions/alert.actions';
 import { alertsEnabled } from '@/lib/market-data';
-import { getNews, getWatchlistData } from '@/lib/actions/finnhub.actions';
+import { getNews, getWatchlistData } from '@/lib/finnhub';
 import WatchlistTable from '@/components/watchlist/WatchlistTable';
 import AlertsPanel from '@/components/watchlist/AlertsPanel';
 import NewsList from '@/components/watchlist/NewsList';
