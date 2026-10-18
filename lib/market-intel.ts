@@ -329,9 +329,15 @@ export type MarketBrief = {
     aiError?: string;
 };
 
-function parseJson(text: string) {
+/** Reads the model's JSON, forgiving code fences and trailing commas (`{"a": 1,}`), the usual slips. */
+export function parseModelJson(text: string) {
     const body = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
-    return JSON.parse(body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1));
+    const json = body.slice(body.indexOf('{'), body.lastIndexOf('}') + 1);
+    try {
+        return JSON.parse(json);
+    } catch {
+        return JSON.parse(json.replace(/,(\s*[}\]])/g, '$1'));
+    }
 }
 
 async function generateMarketBrief(): Promise<MarketBrief> {
@@ -368,7 +374,7 @@ Reply with JSON only, no markdown:
     let parsed: { headline?: unknown; summary?: unknown; bullets?: unknown; watch?: unknown } | null = null;
     let aiError: string | undefined;
     try {
-        parsed = parseJson(await callAIProviderWithFallback(prompt));
+        parsed = parseModelJson(await callAIProviderWithFallback(prompt, { json: true }));
         if (!parsed?.headline || !parsed?.summary) throw new Error('The model returned an unusable brief');
     } catch (error) {
         aiError = error instanceof Error ? error.message : String(error);

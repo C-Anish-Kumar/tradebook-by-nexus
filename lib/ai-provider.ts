@@ -84,9 +84,15 @@ export function getFallbackProviderName(
 const GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite"];
 const AI_TIMEOUT_MS = 45_000;
 
+export type AICallOptions = {
+  /** Ask the model for a JSON object only (Gemini's JSON mode) */
+  json?: boolean;
+};
+
 async function callGemini(
   prompt: string,
-  config: AIProviderConfig
+  config: AIProviderConfig,
+  options: AICallOptions = {}
 ): Promise<string> {
   if (!config.apiKey) throw new Error("GEMINI_API_KEY is not set");
 
@@ -99,6 +105,7 @@ async function callGemini(
       headers: { "Content-Type": "application/json", "x-goog-api-key": config.apiKey },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
+        ...(options.json ? { generationConfig: { responseMimeType: "application/json" } } : {}),
       }),
       signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     });
@@ -168,12 +175,13 @@ async function callOpenAICompatible(
  */
 export async function callAIProvider(
   prompt: string,
-  provider?: AIProviderName
+  provider?: AIProviderName,
+  options: AICallOptions = {}
 ): Promise<string> {
   const config = getProviderConfig(provider);
 
   if (config.name === "gemini") {
-    return callGemini(prompt, config);
+    return callGemini(prompt, config, options);
   }
   // MiniMax and Siray both use OpenAI-compatible endpoints
   return callOpenAICompatible(prompt, config);
@@ -184,14 +192,15 @@ export async function callAIProvider(
  * Tries the primary provider first; on failure switches to the fallback.
  */
 export async function callAIProviderWithFallback(
-  prompt: string
+  prompt: string,
+  options: AICallOptions = {}
 ): Promise<string> {
   const primaryName =
     (process.env.AI_PROVIDER as AIProviderName) || "gemini";
   const fallbackName = getFallbackProviderName(primaryName);
 
   try {
-    return await callAIProvider(prompt, primaryName);
+    return await callAIProvider(prompt, primaryName, options);
   } catch (primaryError) {
     const reason = primaryError instanceof Error ? primaryError.message : String(primaryError);
     // Only fall back to a provider that is actually configured, and never hide the primary's error
@@ -200,7 +209,7 @@ export async function callAIProviderWithFallback(
     }
     console.error(`⚠️ ${primaryName} failed, switching to ${fallbackName} fallback:`, reason);
     try {
-      return await callAIProvider(prompt, fallbackName);
+      return await callAIProvider(prompt, fallbackName, options);
     } catch (fallbackError) {
       const why = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
       throw new Error(`${primaryName} failed: ${reason}; ${fallbackName} failed: ${why}`);
