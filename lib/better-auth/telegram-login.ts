@@ -19,7 +19,7 @@ export const telegramLogin = () => ({
             const login = code.length === 32
                 ? await TelegramLogin.findOneAndDelete({ code, status: "approved", expiresAt: { $gt: new Date() } }).lean()
                 : null;
-            if (!login?.chatId) throw APIError.from("UNAUTHORIZED", { code: "TELEGRAM_LOGIN_NOT_APPROVED", message: "Sign-in was not approved." });
+            if (!login?.chatId) throw new APIError("UNAUTHORIZED", { code: "TELEGRAM_LOGIN_NOT_APPROVED", message: "Sign-in was not approved." });
 
             const linked = await NotificationSettings.findOne({ telegramChatId: login.chatId }, { userId: 1 }).lean();
             let user = linked ? await ctx.context.internalAdapter.findUserById(linked.userId) : null;
@@ -39,8 +39,9 @@ export const telegramLogin = () => ({
                     { upsert: true },
                 );
             }
-            const session = await ctx.context.internalAdapter.createSession(user.id);
-            if (!session) throw APIError.from("INTERNAL_SERVER_ERROR", { code: "SESSION_FAILED", message: "Could not start a session." });
+            // better-auth 1.3 reads the request (IP, user agent) from ctx, so it must be passed
+            const session = await ctx.context.internalAdapter.createSession(user.id, ctx);
+            if (!session) throw new APIError("INTERNAL_SERVER_ERROR", { code: "SESSION_FAILED", message: "Could not start a session." });
             await setSessionCookie(ctx, { session, user });
             return ctx.json({ ok: true });
         }),
