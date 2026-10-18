@@ -7,7 +7,6 @@ import { cache } from "react";
 import { sendPasswordResetEmail } from "@/lib/nodemailer/reset-password";
 import { sendVerificationEmail } from "@/lib/nodemailer/verify-email";
 import { mailConfigured } from "@/lib/mail-config";
-import { telegramLogin } from "@/lib/better-auth/telegram-login";
 
 
 type MongoDb = Parameters<typeof mongodbAdapter>[0];
@@ -29,8 +28,8 @@ const createAuth = (database: MongoDb) => betterAuth({
         emailAndPassword: {
             enabled: true,
             disableSignUp: false,
-            // Verification is a courtesy, not a gate: Telegram sign-in is the other way in and email can be slow
-            requireEmailVerification: false,
+            // Only when mail can actually be sent; sign-in re-sends the link to anyone not yet verified
+            requireEmailVerification: mailConfigured,
             minPasswordLength: 8,
             maxPasswordLength: 128,
             autoSignIn: true,
@@ -46,7 +45,7 @@ const createAuth = (database: MongoDb) => betterAuth({
         },
         emailVerification: {
             sendOnSignUp: mailConfigured,
-            sendOnSignIn: false,
+            sendOnSignIn: mailConfigured,
             autoSignInAfterVerification: true,
             sendVerificationEmail: async ({ user, url }) => {
                 void sendVerificationEmail({ email: user.email, name: user.name, verifyUrl: url }).catch((error) => {
@@ -79,7 +78,7 @@ const createAuth = (database: MongoDb) => betterAuth({
                 clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
             },
         },
-        plugins: [telegramLogin(), nextCookies()],
+        plugins: [nextCookies()],
 });
 
 let authInstance: ReturnType<typeof createAuth> | null = null;
