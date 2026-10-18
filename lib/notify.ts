@@ -11,7 +11,7 @@ import { STATUS_LABEL, type StoredSetup } from '@/lib/setups';
 import { scannerStrategies, setupCacheKey, STRATEGY_1 } from '@/lib/strategies';
 import type { EarningsCalendar } from '@/lib/market-intel';
 
-export type LinkedUser = Pick<INotificationSettings, 'userId' | 'telegramChatId' | 'prefs'>;
+export type LinkedUser = Pick<INotificationSettings, 'userId' | 'telegramChatId' | 'prefs' | 'minScore'>;
 
 /** Users with a linked Telegram chat who want this kind of message. */
 export async function linkedUsers(pref: keyof NotificationPrefs): Promise<LinkedUser[]> {
@@ -19,7 +19,7 @@ export async function linkedUsers(pref: keyof NotificationPrefs): Promise<Linked
     await connectToDatabase();
     return NotificationSettings.find(
         { telegramChatId: { $exists: true, $ne: null }, [`prefs.${pref}`]: true },
-        { userId: 1, telegramChatId: 1, prefs: 1 },
+        { userId: 1, telegramChatId: 1, prefs: 1, minScore: 1 },
     ).lean();
 }
 

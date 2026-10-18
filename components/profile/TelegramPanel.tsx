@@ -8,6 +8,7 @@ import {
     disconnectTelegram,
     getTelegramStatus,
     sendTelegramTest,
+    updateMinScore,
     updateTelegramPrefs,
     type TelegramStatus,
 } from "@/lib/actions/notification.actions";
@@ -139,6 +140,17 @@ export default function TelegramPanel({ initial }: { initial: TelegramStatus }) 
                     </li>
                 ))}
             </ul>
+            <label className="flex flex-wrap items-center gap-3 px-1 text-[13px]">
+                <span className="min-w-0">
+                    <span className="block font-semibold">Minimum score for new entries: <span className="num">{status.minScore || 'off'}</span></span>
+                    <span className="block text-[12px] text-faint">Skips trade-setup messages scoring below this. Exits are always sent.</span>
+                </span>
+                <input type="range" min={0} max={90} step={5} value={status.minScore} aria-label="Minimum quant score"
+                       onChange={(e) => setStatus({ ...status, minScore: Number(e.target.value) })}
+                       onPointerUp={() => updateMinScore(status.minScore).catch(() => toast.error('Could not save. Try again.'))}
+                       onKeyUp={() => updateMinScore(status.minScore).catch(() => toast.error('Could not save. Try again.'))}
+                       className="ml-auto w-40 accent-[var(--brand)]" />
+            </label>
             <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={test} disabled={busy !== null} className="btn btn-ghost">
                     {busy === 'test' ? <Loader2 className="animate-spin" /> : <Send />} Send a test

@@ -59,11 +59,23 @@ export function sortSetups<T extends { setup: Setup | null }>(rows: T[]): T[] {
     return [...rows].sort((a, b) => rank(a) - rank(b) || score(b) - score(a));
 }
 
-/** Whole shares that lose `riskPct`% of the account if the stop is hit; null if the inputs can't size a trade. */
+/** Swing limit: open at most this many positions at once. */
+export const MAX_POSITIONS = 2;
+
+/** Whole shares to buy so a stop-out loses `riskPct` of the account, never spending more than the account itself; null if the inputs can't size a trade. */
 export function sizeShares(account: number, riskPct: number, entry: number, stop: number) {
     if (!(account > 0) || !(riskPct > 0) || !(entry > stop) || stop <= 0) return null;
-    const shares = Math.floor((account * riskPct / 100) / (entry - stop));
-    return { shares, cost: shares * entry, risk: shares * (entry - stop), fits: shares * entry <= account };
+    const byRisk = Math.floor((account * riskPct / 100) / (entry - stop));
+    const byCash = Math.floor(account / entry);
+    const shares = Math.max(0, Math.min(byRisk, byCash));
+    return { shares, cost: shares * entry, risk: shares * (entry - stop), capped: byRisk > byCash, affordable: byCash >= 1 };
+}
+
+/** Whole days from today (UTC date) to an ISO date; null when it is not a date. */
+export function daysUntil(date: string, now = new Date()): number | null {
+    const t = Date.parse(`${date}T00:00:00Z`);
+    if (Number.isNaN(t)) return null;
+    return Math.round((t - Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) / 86_400_000);
 }
 
 export type Transition = 'entry' | 'exit' | null;

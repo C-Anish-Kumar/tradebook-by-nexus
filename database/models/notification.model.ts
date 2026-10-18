@@ -14,6 +14,8 @@ export interface INotificationSettings {
     linkCode?: string;
     linkCodeExpires?: Date;
     prefs: NotificationPrefs;
+    // Setup messages below this quant score (0-100) are skipped; 0 sends everything
+    minScore?: number;
 }
 
 const NotificationSettingsSchema = new Schema<INotificationSettings>(
@@ -23,6 +25,7 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>(
         telegramName: { type: String },
         linkCode: { type: String, index: true },
         linkCodeExpires: { type: Date },
+        minScore: { type: Number, default: 0, min: 0, max: 100 },
         prefs: {
             alerts: { type: Boolean, default: true },
             daily: { type: Boolean, default: true },

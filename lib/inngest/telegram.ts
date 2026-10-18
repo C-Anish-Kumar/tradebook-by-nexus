@@ -8,8 +8,8 @@ import { escapeHtml, getBotUsername, setTelegramCommands, setTelegramWebhook, te
 import {
     buildWatchlistSummary, earningsDayLabel, earningsHourLabel, formatUsd, linkedUsers, notify, stockLink, watchlistsFor,
 } from '@/lib/notify';
+import { isScannable } from '@/lib/symbols';
 
-const isUsStock = (s: string) => !s.includes(':') && !s.includes('.');
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const plusDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 
@@ -55,7 +55,7 @@ export const watchStrategySignals = inngest.createFunction(
         const users = await linkedUsers('signals');
         if (!users.length) return { checked: 0 };
         const lists = await watchlistsFor(users.map((u) => u.userId));
-        const symbols = [...new Set([...lists.values()].flat())].filter(isUsStock);
+        const symbols = [...new Set([...lists.values()].flat())].filter(isScannable);
 
         const changes: { symbol: string; from: string; to: string; html: string }[] = [];
         for (const symbol of symbols) {
