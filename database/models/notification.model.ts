@@ -1,6 +1,6 @@
 import { Schema, model, models, type Model } from 'mongoose';
 
-export type NotificationPrefs = { alerts: boolean; daily: boolean; signals: boolean; earnings: boolean };
+export type NotificationPrefs = { alerts: boolean; daily: boolean; signals: boolean; earnings: boolean; setups: boolean };
 
 export interface INotificationSettings {
     userId: string;
@@ -24,6 +24,8 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>(
             daily: { type: Boolean, default: true },
             signals: { type: Boolean, default: true },
             earnings: { type: Boolean, default: true },
+            // Opt-in: breakout setups are hypotheses, so nobody gets them without asking
+            setups: { type: Boolean, default: false },
         },
     },
     { timestamps: true, versionKey: false }
