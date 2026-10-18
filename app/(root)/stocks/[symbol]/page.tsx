@@ -109,10 +109,21 @@ async function Strategy({ symbol }: { symbol: string }) {
     );
 }
 
-async function SecFundamentals({ symbol }: { symbol: string }) {
-    if (symbol.includes(':')) return null;
-    const data = await getFundamentals(symbol);
-    if (!data) return null; // not an SEC filer, or the service is asleep
+// TradingView's statements, for stocks without SEC data (foreign listings, funds) or while the service sleeps
+const TradingViewFinancials = ({ tvSymbol }: { tvSymbol: string }) => (
+    <Panel title="Financials" sub="Income statement, balance sheet and ratios">
+        <TradingViewWidget
+            scriptUrl={`${scriptUrl}financials.js`}
+            config={COMPANY_FINANCIALS_WIDGET_CONFIG(tvSymbol)}
+            height={500}
+        />
+    </Panel>
+);
+
+// One financials panel per stock: SEC fundamentals when we have them, TradingView's otherwise
+async function SecFundamentals({ symbol, tvSymbol }: { symbol: string; tvSymbol: string }) {
+    const data = symbol.includes(':') ? null : await getFundamentals(symbol);
+    if (!data) return <TradingViewFinancials tvSymbol={tvSymbol} />;
     return (
         <Panel title="Fundamentals" sub="From SEC filings: annual results, insider trades and the latest reports">
             <FundamentalsPanel data={data} />
@@ -165,15 +176,8 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                         <Strategy symbol={symbol} />
                     </Suspense>
                     <Suspense fallback={null}>
-                        <SecFundamentals symbol={symbol} />
+                        <SecFundamentals symbol={symbol} tvSymbol={tvSymbol} />
                     </Suspense>
-                    <Panel title="Financials" sub="Income statement, balance sheet and ratios">
-                        <TradingViewWidget
-                            scriptUrl={`${scriptUrl}financials.js`}
-                            config={COMPANY_FINANCIALS_WIDGET_CONFIG(tvSymbol)}
-                            height={500}
-                        />
-                    </Panel>
                 </div>
 
                 <div className="flex min-w-0 flex-col gap-3">

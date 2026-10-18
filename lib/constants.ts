@@ -94,7 +94,8 @@ export const singleQuoteConfig = (symbol: string) => ({
 export const CANDLE_CHART_WIDGET_CONFIG = (symbol: string) => ({
     allow_symbol_change: false,
     calendar: false,
-    details: true,
+    // The chart's own side panel repeats the page's Technicals and Profile panels (plus seasonals and bonds)
+    details: false,
     hide_side_toolbar: true,
     hide_top_toolbar: false,
     hide_legend: false,
