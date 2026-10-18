@@ -15,6 +15,8 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Strategy and backtest**: a 10/21 EMA + Supertrend (10,3) checklist on every stock, a replay of it over
   1–10 years, and risk-adjusted scores (Sharpe, Sortino, Calmar, alpha/beta vs SPY)
 - **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
+- **RL Lab**: train a reinforcement-learning trading agent ([Nexus](https://github.com/C-Anish-Kumar/nexus), built on
+  FinRL) on a strategy template, compare it with buy-and-hold on data it never saw, and see today's signal
 - **Portfolio Lab**: five allocation methods tested walk-forward on your stocks, with weights, the
   efficient frontier and a correlation matrix
 - **Market brief**: an AI-written summary of what moved and why, before the open, at midday and after the close
@@ -40,6 +42,7 @@ empyrical on a Hugging Face Space
 | Database | MongoDB Atlas |
 | Background jobs | Inngest Cloud (Vercel integration): alerts, market data every hour, the market brief 3× a weekday, and a ping that keeps the AI service awake |
 | AI analyst service | Hugging Face Space running [`analyst-service/`](analyst-service/) |
+| RL Lab service | Hugging Face Space running [Nexus](https://github.com/C-Anish-Kumar/nexus) (`space/` in that repo) |
 
 ## Environment variables
 
@@ -53,6 +56,8 @@ empyrical on a Hugging Face Space
 | `NODEMAILER_EMAIL`, `NODEMAILER_PASSWORD` | Gmail address and app password for emails |
 | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | set by the Inngest Vercel integration |
 | `ANALYST_SERVICE_URL`, `ANALYST_API_KEY` | the AI analyst Space and its shared secret |
+| `NEXUS_SERVICE_URL`, `NEXUS_API_KEY` | optional, the Nexus Space and its shared secret; turns on RL Lab |
+| `NEXUS_HF_TOKEN` | optional, only if the Nexus Space is private |
 | `GEMINI_API_KEY` | AI-written emails and the market brief |
 | `TELEGRAM_BOT_TOKEN` | optional, from [@BotFather](https://t.me/BotFather); turns on Telegram messages |
 | `TELEGRAM_WEBHOOK_SECRET` | with the token: any random string (`openssl rand -hex 24`); Telegram sends it back so the webhook knows the call is genuine. After adding both, send the Inngest event `app/telegram.setup` once |
