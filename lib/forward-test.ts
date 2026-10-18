@@ -1,7 +1,7 @@
 import type { ForwardOutcome, IForwardTrade } from '@/database/models/forward-trade.model';
 import type { Setup } from '@/lib/setups';
 
-export const EXPIRE_DAYS = 30;
+const EXPIRE_DAYS = 30;
 
 export type TradeState = Pick<IForwardTrade, 'entry' | 'stop' | 'target2r' | 'signalDate' | 'outcome'>;
 export type Update = { outcome: ForwardOutcome; lastClose: number; closedOn?: string; exitPrice?: number; r?: number };
