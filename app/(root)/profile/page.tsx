@@ -63,14 +63,11 @@ export default async function ProfilePage() {
             </section>
 
             <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-                <Panel title="Details" sub="Your name and what your welcome email is tailored to">
+                <Panel title="Details" sub="Your name and home market">
                     <ProfileForm
                         initial={{
                             name: user.name,
-                            country: user.country ?? 'US',
-                            investmentGoals: user.investmentGoals ?? 'Growth',
-                            riskTolerance: user.riskTolerance ?? 'Medium',
-                            preferredIndustry: user.preferredIndustry ?? 'Technology',
+                            country: user.country ?? 'CA',
                         }}
                     />
                 </Panel>

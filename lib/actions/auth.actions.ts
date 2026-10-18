@@ -5,16 +5,16 @@ import { inngest } from "@/lib/inngest/client";
 import { headers } from "next/headers";
 import { mailConfigured } from "@/lib/mail-config";
 
-export const signUpWithEmail = async ({ email, password, fullName, country, investmentGoals, riskTolerance, preferredIndustry }: SignUpFormData) => {
+export const signUpWithEmail = async ({ email, password, fullName, country }: SignUpFormData) => {
     try {
-        const response = await auth.api.signUpEmail({ body: { email, password, name: fullName, country, investmentGoals, riskTolerance, preferredIndustry } })
+        const response = await auth.api.signUpEmail({ body: { email, password, name: fullName, country } })
 
         if (response) {
             try {
                 console.log('📤 Sending Inngest event: app/user.created for', email);
                 await inngest.send({
                     name: 'app/user.created',
-                    data: { email, name: fullName, country, investmentGoals, riskTolerance, preferredIndustry }
+                    data: { email, name: fullName, country }
                 });
                 console.log('✅ Inngest event sent successfully');
             } catch (error) {

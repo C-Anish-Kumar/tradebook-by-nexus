@@ -4,9 +4,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import InputField from "@/components/forms/InputField";
-import ChoiceChips from "@/components/forms/ChoiceChips";
 import { CountrySelectField } from "@/components/forms/CountrySelectField";
-import { INVESTMENT_GOALS, PREFERRED_INDUSTRIES, RISK_TOLERANCE_OPTIONS } from "@/lib/constants";
 import { updateProfile, type ProfileInput } from "@/lib/actions/profile.actions";
 
 export default function ProfileForm({ initial }: { initial: ProfileInput }) {
@@ -38,9 +36,6 @@ export default function ProfileForm({ initial }: { initial: ProfileInput }) {
                 validation={{ required: 'Name is required', minLength: { value: 2, message: 'At least 2 characters' } }}
             />
             <CountrySelectField name="country" label="Country" control={control} error={errors.country} required />
-            <ChoiceChips name="investmentGoals" label="Investment goal" options={INVESTMENT_GOALS} control={control} />
-            <ChoiceChips name="riskTolerance" label="Risk tolerance" options={RISK_TOLERANCE_OPTIONS} control={control} />
-            <ChoiceChips name="preferredIndustry" label="Preferred industry" options={PREFERRED_INDUSTRIES} control={control} />
             <div className="flex items-center gap-3 pt-1">
                 <button type="submit" disabled={isSubmitting || !isDirty} className="btn btn-primary">
                     {isSubmitting ? 'Saving' : 'Save changes'}
