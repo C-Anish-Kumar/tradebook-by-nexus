@@ -2,16 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { enabledStrategies, scannerStrategies, setupCacheKey, setupStateKey, STRATEGIES, STRATEGY_1, STRATEGY_2 } from '@/lib/strategies';
 
 describe('strategy registry', () => {
-    it('runs Strategy 2 and the playbook strategies, with Strategy 1 off', () => {
+    it('runs the trend breakout and the playbook strategies, with EMA + Supertrend off', () => {
         expect(enabledStrategies().map((s) => s.id)).toEqual(['breakout', 'ma_pullback', 'golden_cross', 'breakout_retest', 'volume_bounce']);
         expect(STRATEGY_1.enabled).toBe(false);
         expect(STRATEGY_2.enabled).toBe(true);
     });
 
-    it('gives every strategy its own Telegram switch and a unique label', () => {
+    it('gives every strategy its own Telegram switch, a unique descriptive name and a plain explanation', () => {
         const all = Object.values(STRATEGIES);
         expect(new Set(all.map((s) => s.telegramPref)).size).toBe(all.length);
-        expect(new Set(all.map((s) => s.label)).size).toBe(all.length);
+        expect(new Set(all.map((s) => s.name)).size).toBe(all.length);
+        for (const s of all) {
+            expect(s.name).not.toMatch(/^strategy\s*\d/i);
+            expect(s.looksAt.length).toBeGreaterThan(1);
+        }
     });
 
     it('only lists enabled scanners on the Setups page', () => {

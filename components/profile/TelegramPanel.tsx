@@ -20,7 +20,7 @@ const OPTIONS: { key: keyof NotificationPrefs; label: string; detail: string }[]
     { key: 'alerts', label: 'Price alerts', detail: 'The moment one of your alerts triggers' },
     { key: 'daily', label: 'Daily summary', detail: 'Your watchlist after each US market close' },
     // One switch per strategy that is turned on; a strategy that is off never appears here
-    ...enabledStrategies().map((s) => ({ key: s.telegramPref, label: `${s.label}: ${s.name}`, detail: `${s.rules}. A fresh entry or exit on a watched stock, with its quant score.` })),
+    ...enabledStrategies().map((s) => ({ key: s.telegramPref, label: s.name, detail: `${s.rules}. A fresh entry or exit on a watched stock, with its quant score.` })),
     { key: 'earnings', label: 'Earnings', detail: 'The day before a watched stock reports, then beat or miss' },
 ];
 

@@ -114,6 +114,6 @@ export function setupMessage(link: string, setup: Setup, kind: Exclude<Transitio
         `Size: account × your risk % ÷ ${usd(p.risk_per_share)}`,
         `Evidence: walk-forward Sharpe ${ev.oos_sharpe ?? 'n/a'}, deflated Sharpe ${ev.deflated_sharpe ?? 'n/a'} over ${ev.trials ?? '?'} trials`,
         `<i>${esc(tag)}</i>`,
-        `<i>${strategy.label} (${esc(strategy.name)}), daily candles. Not financial advice.</i>`,
+        `<i>${esc(strategy.name)}, daily candles. Not financial advice.</i>`,
     ].join('\n');
 }

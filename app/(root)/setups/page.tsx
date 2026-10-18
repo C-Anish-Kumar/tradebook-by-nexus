@@ -4,6 +4,7 @@ import { analystEnabled } from '@/lib/analyst';
 import { getForwardTest, getSetupBoard } from '@/lib/actions/setups.actions';
 import ForwardTest from '@/components/setups/ForwardTest';
 import SetupsBoard from '@/components/setups/SetupsBoard';
+import StrategyExplainer from '@/components/setups/StrategyExplainer';
 import Panel from '@/components/Panel';
 import { scannerStrategies } from '@/lib/strategies';
 import { cn } from '@/lib/utils';
@@ -23,7 +24,7 @@ export default async function SetupsPage({ searchParams }: { searchParams: Promi
                 <div>
                     <h1 className="page-title">Setups</h1>
                     <p className="page-sub">
-                        {active ? `${active.label}: ${active.name} entries on your watchlist, each with a 0-100 quant score and the evidence behind it` : 'No strategy is switched on'}
+                        {active ? `${active.name} entries on your watchlist, each with a 0-100 quant score and the evidence behind it` : 'No strategy is switched on'}
                     </p>
                 </div>
             </header>
@@ -32,13 +33,16 @@ export default async function SetupsPage({ searchParams }: { searchParams: Promi
                     {strategies.map((s) => (
                         <Link key={s.id} href={`/setups?strategy=${s.id}`} aria-current={s.id === active?.id ? 'page' : undefined}
                               className={cn('pill h-8 px-3 text-[13px]', s.id === active?.id && 'is-brand')}>
-                            {s.label} · {s.name}
+                            {s.name}
                         </Link>
                     ))}
                 </nav>
             )}
             {analystEnabled && active ? (
                 <div className="flex flex-col gap-3">
+                    <Panel title={`How ${active.name} works`}>
+                        <StrategyExplainer strategy={active} className="p-4" />
+                    </Panel>
                     <SetupsBoard rows={rows} />
                     {forward && <ForwardTest {...forward} />}
                 </div>

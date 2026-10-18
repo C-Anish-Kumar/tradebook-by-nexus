@@ -1,5 +1,4 @@
 // Source code for this deployment (the AGPL asks network users to be offered it)
-import { STRATEGY_1 } from '@/lib/strategies';
 export const REPO_URL = 'https://github.com/C-Anish-Kumar/tradebook-by-nexus';
 
 // TradingView widgets, built per market from lib/markets.ts groups
@@ -89,39 +88,6 @@ export const singleQuoteConfig = (symbol: string) => ({
     colorTheme: 'dark',
     isTransparent: true,
     locale: 'en',
-});
-
-export const CANDLE_CHART_WIDGET_CONFIG = (symbol: string) => ({
-    allow_symbol_change: false,
-    calendar: false,
-    // The chart's own side panel repeats the page's Technicals and Profile panels (plus seasonals and bonds)
-    details: false,
-    hide_side_toolbar: true,
-    hide_top_toolbar: false,
-    hide_legend: false,
-    hide_volume: false,
-    hotlist: false,
-    interval: 'D',
-    locale: 'en',
-    save_image: false,
-    style: 1,
-    symbol: symbol.toUpperCase(),
-    theme: 'dark',
-    timezone: 'exchange',
-    backgroundColor: '#1f1e1a', // --card
-    gridColor: 'rgba(255, 255, 255, 0.04)',
-    watchlist: [],
-    withdateranges: false,
-    compareSymbols: [],
-    // Strategy 1's indicators (10/21 EMA, 50 DEMA, Supertrend 10,3) are drawn only while that strategy is on
-    studies: STRATEGY_1.enabled ? [
-        { id: 'MAExp@tv-basicstudies', inputs: { length: 10 } },
-        { id: 'MAExp@tv-basicstudies', inputs: { length: 21 } },
-        { id: 'STD;DEMA', inputs: { in_0: 50 } },
-        { id: 'STD;Supertrend', inputs: { in_0: 10, in_1: 3 } },
-    ] : [],
-    width: '100%',
-    height: 600,
 });
 
 export const TECHNICAL_ANALYSIS_WIDGET_CONFIG = (symbol: string) => ({

@@ -20,7 +20,7 @@ export default function ForwardTest({ rows, recent }: { rows: ForwardRow[]; rece
                             <tbody>
                                 {rows.map((x) => (
                                     <tr key={x.strategy} className="border-t border-[var(--line)]">
-                                        <td className="py-1.5 pr-3">{x.label} · {x.name}</td>
+                                        <td className="py-1.5 pr-3">{x.name}</td>
                                         <td className="num pr-3">{x.trades}</td><td className="num pr-3">{x.open}</td><td className="num pr-3">{x.closed}</td>
                                         <td className="num pr-3">{x.winRate === null ? '—' : `${x.winRate}%`}</td>
                                         <td className={cn('num pr-3', (x.avgR ?? 0) > 0 ? 'text-up' : (x.avgR ?? 0) < 0 && 'text-down')}>{r(x.avgR)}</td>
