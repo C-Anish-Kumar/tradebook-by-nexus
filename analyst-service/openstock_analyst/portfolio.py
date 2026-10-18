@@ -13,12 +13,40 @@ from openstock_analyst.metrics import performance
 TRAIN_DAYS, TEST_DAYS = 252, 63
 
 
+def _max_sharpe():
+    """Max Sharpe that survives a bad training window.
+
+    When every stock averaged below the risk-free rate over the window (a bear market), the ratio has no
+    solution and skfolio raises. Rather than failing the whole run, that window falls back to minimum variance,
+    which is the sensible defensive answer when nothing is earning its keep.
+    """
+    from skfolio.optimization import MeanRisk, ObjectiveFunction
+
+    class MaxSharpe(MeanRisk):
+        def __init__(self):
+            super().__init__(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)
+
+        def fit(self, X, y=None, **kwargs):
+            try:
+                return super().fit(X, y, **kwargs)
+            except Exception as exc:  # noqa: BLE001 - skfolio raises ValueError or a solver error here
+                if "Maximum Ratio" not in str(exc):
+                    raise
+                self.objective_function = ObjectiveFunction.MINIMIZE_RISK
+                try:
+                    return super().fit(X, y, **kwargs)
+                finally:
+                    self.objective_function = ObjectiveFunction.MAXIMIZE_RATIO
+
+    return MaxSharpe()
+
+
 def _models():
     from skfolio.optimization import (
-        EqualWeighted, HierarchicalRiskParity, MeanRisk, ObjectiveFunction, RiskBudgeting,
+        EqualWeighted, HierarchicalRiskParity, MeanRisk, RiskBudgeting,
     )
     return {
-        "max_sharpe": ("Max Sharpe", MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)),
+        "max_sharpe": ("Max Sharpe", _max_sharpe()),
         "min_variance": ("Min variance", MeanRisk()),
         "hrp": ("Hierarchical risk parity", HierarchicalRiskParity()),
         "risk_parity": ("Risk parity", RiskBudgeting()),
