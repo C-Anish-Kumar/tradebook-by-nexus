@@ -4,7 +4,7 @@ import { nexusEnabled } from '@/lib/nexus';
 import RlLab from '@/components/rl/RlLab';
 import Panel from '@/components/Panel';
 
-export const metadata = { title: 'RL Lab | Tradebook by Nexus' };
+export const metadata = { title: 'RL Lab | Apex Tradebook' };
 
 export default async function RlLabPage() {
     const runs = nexusEnabled ? await listRlRuns() : [];

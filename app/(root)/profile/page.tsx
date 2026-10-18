@@ -11,7 +11,7 @@ import { getUserWatchlist } from "@/lib/actions/watchlist.actions";
 import { getUserAlerts } from "@/lib/actions/alert.actions";
 import { alertsEnabled } from "@/lib/market-data";
 
-export const metadata = { title: 'Profile | Tradebook by Nexus' };
+export const metadata = { title: 'Profile | Apex Tradebook' };
 
 const METHOD_LABELS: Record<string, string> = {
     credential: 'Email and password',

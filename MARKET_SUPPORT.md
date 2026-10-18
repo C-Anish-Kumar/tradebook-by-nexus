@@ -1,6 +1,6 @@
 # Market support
 
-What Tradebook by Nexus can show depends on two free data sources. This table was tested against both on the free plans (September 2026). Paid Finnhub or TradingView plans unlock more.
+What Apex Tradebook can show depends on two free data sources. This table was tested against both on the free plans (September 2026). Paid Finnhub or TradingView plans unlock more.
 
 | Market | Charts and widgets (TradingView embeds) | Our quotes, watchlist prices, alerts (Finnhub free) |
 |---|---|---|

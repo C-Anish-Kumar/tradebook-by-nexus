@@ -1,10 +1,10 @@
 // One place for the product's name and public links
 
-export const BRAND_NAME = 'Tradebook';
-export const BRAND_FULL = 'Tradebook by Nexus';
+export const BRAND_NAME = 'Apex Tradebook';
+export const BRAND_FULL = 'Apex Tradebook';
 
 // Used in emails, where links must be absolute
-export const APP_URL = (process.env.BETTER_AUTH_URL || 'https://open-stock-nexus.vercel.app').replace(/\/+$/, '');
+export const APP_URL = (process.env.BETTER_AUTH_URL || 'https://apex-tradebook.vercel.app').replace(/\/+$/, '');
 
 // Shown on Help and Terms when set; the links hide otherwise
 export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || '';

@@ -14,12 +14,11 @@ export const LogoMark = ({ className }: { className?: string }) => (
     </svg>
 );
 
-const Logo = ({ className, compact = false }: { className?: string; compact?: boolean }) => (
+const Logo = ({ className }: { className?: string }) => (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
         <LogoMark />
         <span className="flex flex-col leading-none">
             <span className="text-[19px] font-bold tracking-[-0.04em] text-foreground">{BRAND_NAME}</span>
-            {!compact && <span className="mt-0.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-faint">by Nexus</span>}
         </span>
     </span>
 );

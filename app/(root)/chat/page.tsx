@@ -3,7 +3,7 @@ import { analystEnabled } from '@/lib/analyst';
 import TradeChat from '@/components/chat/TradeChat';
 import Panel from '@/components/Panel';
 
-export const metadata = { title: 'Ask | Tradebook by Nexus' };
+export const metadata = { title: 'Ask | Apex Tradebook' };
 export const maxDuration = 60; // a cold analyst service can take a while to answer the first question
 
 export default function ChatPage() {

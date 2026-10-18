@@ -21,7 +21,7 @@ const FEATURES = [
 
 const TIERS = [
     {
-        name: 'Tradebook', price: 'Free', cadence: 'Every 15 seconds', perHour: 240,
+        name: BRAND_NAME, price: 'Free', cadence: 'Every 15 seconds', perHour: 240,
         body: 'This site. Live quotes, price alerts and AI analysis on top of always-live TradingView charts.',
         cta: { label: 'Get started', href: '/sign-up' },
     },

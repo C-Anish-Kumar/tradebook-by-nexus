@@ -1,4 +1,4 @@
-"""HTTP wrapper around TradingAgents for Tradebook by Nexus.
+"""HTTP wrapper around TradingAgents for Apex Tradebook.
 
 A run takes minutes, so POST /analyses queues it and returns a job id; the caller
 polls GET /analyses/{id}. Jobs live in memory: a restart loses runs in flight,
