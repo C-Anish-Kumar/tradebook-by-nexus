@@ -7,7 +7,10 @@ import { inngest } from '@/lib/inngest/client';
 import { getUserWatchlist } from '@/lib/actions/watchlist.actions';
 import type { StoredSetup } from '@/lib/setups';
 import type { EarningsCalendar } from '@/lib/market-intel';
-import { setupCacheKey, STRATEGIES, type StrategyId } from '@/lib/strategies';
+import { setupCacheKey, scannerStrategies, STRATEGIES, type StrategyId } from '@/lib/strategies';
+import { connectToDatabase } from '@/database/mongoose';
+import { ForwardTrade } from '@/database/models/forward-trade.model';
+import { summarize, type Summary } from '@/lib/forward-test';
 import { isScannable } from '@/lib/symbols';
 
 export type SetupRow = { symbol: string; stored: StoredSetup | null; earningsDate?: string };
@@ -43,4 +46,20 @@ export async function requestSetupScan(): Promise<{ success: true } | { error: s
     } catch (error) {
         return { error: error instanceof Error ? error.message : 'Could not start the scan' };
     }
+}
+
+export type ForwardRow = { strategy: StrategyId; label: string; name: string } & Summary;
+export type ForwardTradeRow = { id: string; strategy: StrategyId; symbol: string; signalDate: string; outcome: string; r: number | null; score: number | null };
+
+/** How the scanner's entries have actually done since they were logged: every user's watchlist feeds one shared record. */
+export async function getForwardTest(): Promise<{ rows: ForwardRow[]; recent: ForwardTradeRow[] }> {
+    await requireUserId();
+    await connectToDatabase();
+    const all = await ForwardTrade.find({}).sort({ signalDate: -1 }).limit(2000).lean();
+    const rows = scannerStrategies().map((s) => ({ strategy: s.id, label: s.label, name: s.name, ...summarize(all.filter((t) => t.strategy === s.id)) }));
+    const recent = all.slice(0, 12).map((t) => ({
+        id: String(t._id), strategy: t.strategy as StrategyId, symbol: t.symbol, signalDate: t.signalDate,
+        outcome: t.outcome, r: typeof t.r === 'number' ? t.r : null, score: t.score ?? null,
+    }));
+    return { rows, recent };
 }
