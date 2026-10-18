@@ -3,9 +3,8 @@
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import InputField from "@/components/forms/InputField";
-import ChoiceChips from "@/components/forms/ChoiceChips";
 import PasswordRequirements from "@/components/forms/PasswordRequirements";
-import { INVESTMENT_GOALS, PASSWORD_VALIDATION, PREFERRED_INDUSTRIES, RISK_TOLERANCE_OPTIONS } from "@/lib/constants";
+import { PASSWORD_VALIDATION } from "@/lib/constants";
 import { CountrySelectField } from "@/components/forms/CountrySelectField";
 import FooterLink from "@/components/forms/FooterLink";
 import { signUpWithEmail } from "@/lib/actions/auth.actions";
@@ -27,10 +26,7 @@ const SignUp = () => {
             fullName: '',
             email: '',
             password: '',
-            country: 'IN',
-            investmentGoals: 'Growth',
-            riskTolerance: 'Medium',
-            preferredIndustry: 'Technology'
+            country: 'CA',
         },
         mode: 'onBlur'
     },);
@@ -108,7 +104,7 @@ const SignUp = () => {
                 <section className="flex flex-col gap-5 border-t border-line pt-6" aria-labelledby="personalize">
                     <div>
                         <p id="personalize" className="kicker text-brand-ink">Personalize</p>
-                        <p className="mt-1 text-[13px] text-faint">Used to tailor your welcome email.</p>
+                        <p className="mt-1 text-[13px] text-faint">Sets which market opens first. TSX stocks work too: add them as SHOP.TO.</p>
                     </div>
                     <CountrySelectField
                         name="country"
@@ -117,9 +113,6 @@ const SignUp = () => {
                         error={errors.country}
                         required
                     />
-                    <ChoiceChips name="investmentGoals" label="Investment goal" options={INVESTMENT_GOALS} control={control} />
-                    <ChoiceChips name="riskTolerance" label="Risk tolerance" options={RISK_TOLERANCE_OPTIONS} control={control} />
-                    <ChoiceChips name="preferredIndustry" label="Preferred industry" options={PREFERRED_INDUSTRIES} control={control} />
                 </section>
 
                 <div className="flex flex-col gap-4">

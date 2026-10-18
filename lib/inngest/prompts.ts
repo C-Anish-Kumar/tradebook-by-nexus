@@ -9,11 +9,8 @@ You MUST create content that is obviously tailored to THIS specific user by:
 IMPORTANT: Do NOT start the personalized content with "Welcome" since the email header already says "Welcome aboard {{name}}". Use alternative openings like "Thanks for joining", "Great to have you", "You're all set", "Perfect timing", etc.
 
 1. **Direct Reference to User Details**: Extract and use specific information from their profile:
-   - Their exact investment goals or objectives
-   - Their stated risk tolerance level
-   - Their preferred sectors/industries mentioned
-   - Their experience level or background
-   - Any specific stocks/companies they're interested in
+   - Their country (for a Canadian reader, mention that TSX stocks work as SHOP.TO)
+   - Do not invent goals, risk tolerance or favourite sectors; only the details listed above are known
    - Their investment timeline (short-term, long-term, retirement)
 
 2. **Contextual Messaging**: Create content that shows you understand their situation:
