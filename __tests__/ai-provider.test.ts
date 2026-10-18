@@ -402,3 +402,22 @@ describe("Gemini model fallback", () => {
     expect(mockFetch.mock.calls[1][0]).toContain("gemini-3.5-flash-lite");
   });
 });
+
+describe("Gemini JSON mode", () => {
+  const originalEnv = { ...process.env };
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  it("asks for application/json only when requested", async () => {
+    process.env.GEMINI_API_KEY = "g";
+    const ok = { ok: true, json: () => Promise.resolve({ candidates: [{ content: { parts: [{ text: "{}" }] } }] }) };
+    const mockFetch = vi.fn().mockResolvedValue(ok);
+    vi.stubGlobal("fetch", mockFetch);
+
+    await callAIProvider("p", "gemini", { json: true });
+    await callAIProvider("p", "gemini");
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).generationConfig).toEqual({ responseMimeType: "application/json" });
+    expect(JSON.parse(mockFetch.mock.calls[1][1].body).generationConfig).toBeUndefined();
+  });
+});
