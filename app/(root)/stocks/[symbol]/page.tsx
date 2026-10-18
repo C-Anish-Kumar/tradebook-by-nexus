@@ -5,7 +5,8 @@ import StockHeader, { StockHeaderSkeleton } from "@/components/stocks/StockHeade
 import StockSentimentCard from "@/components/stocks/StockSentimentCard";
 import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import StrategyPanel from "@/components/stocks/StrategyPanel";
-import { STRATEGY_1 } from "@/lib/strategies";
+import { STRATEGY_1, STRATEGY_2 } from "@/lib/strategies";
+import SetupSummary from "@/components/setups/SetupSummary";
 import BacktestPanel from "@/components/stocks/BacktestPanel";
 import FundamentalsPanel from "@/components/stocks/FundamentalsPanel";
 import Panel from "@/components/Panel";
@@ -17,7 +18,7 @@ import {
 } from "@/lib/constants";
 import { getStockSentimentInsights } from '@/lib/actions/adanos.actions';
 import { getLatestAnalysis } from '@/lib/actions/analysis.actions';
-import { analystEnabled, getFundamentals, getStrategySignals } from '@/lib/analyst';
+import { analystEnabled, getFundamentals, getSetup, getStrategySignals } from '@/lib/analyst';
 import { formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils';
 
 const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
@@ -42,8 +43,23 @@ async function AIAnalyst({ symbol }: { symbol: string }) {
     );
 }
 
+async function Setup({ symbol }: { symbol: string }) {
+    if (!analystEnabled || !STRATEGY_2.enabled || symbol.includes(':')) return null;
+    const setup = await getSetup(symbol);
+    return (
+        <Panel title={`${STRATEGY_2.label}: quant score`} sub={`${STRATEGY_2.name}: ${STRATEGY_2.rules}`}>
+            {setup ? <SetupSummary setup={setup} /> : (
+                <div className="empty-state py-10">
+                    <h3>Waking up the analyst service</h3>
+                    <p className="max-w-80 text-[13px]">The score for {symbol} will be ready in about a minute. Refresh then.</p>
+                </div>
+            )}
+        </Panel>
+    );
+}
+
 async function Strategy({ symbol }: { symbol: string }) {
-    if (!analystEnabled || symbol.includes(':')) return null;
+    if (!analystEnabled || !STRATEGY_1.enabled || symbol.includes(':')) return null;
     const signals = await getStrategySignals(symbol);
     if (!signals) {
         // First visit while the Space sleeps: say so instead of silently dropping the panels
@@ -117,6 +133,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                             </div>
                         </Panel>
                     )}
+                    <Suspense fallback={null}>
+                        <Setup symbol={symbol} />
+                    </Suspense>
                     <Suspense fallback={null}>
                         <Strategy symbol={symbol} />
                     </Suspense>

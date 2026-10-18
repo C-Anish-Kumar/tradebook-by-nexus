@@ -61,3 +61,50 @@ def test_position_size_respects_risk():
 def test_too_little_history_is_rejected(trending):
     with pytest.raises(ValueError):
         build_setup(trending.iloc[:100])
+
+
+def test_quant_score_shape_and_bounds(trending):
+    q = build_setup(trending, account=1000)["quant"]
+    assert 0 <= q["score"] <= 100
+    assert q["label"] in {"Strong", "Good", "Fair", "Weak", "Poor"}
+    assert [c["key"] for c in q["components"]] == ["evidence", "regime", "readiness", "volume", "risk"]
+    assert sum(c["max"] for c in q["components"]) == 100
+    assert all(0 <= c["points"] <= c["max"] for c in q["components"])
+
+
+def test_unvalidated_setups_cannot_score_above_the_cap():
+    from openstock_analyst.quant_score import UNVALIDATED_CAP, score_setup
+
+    perfect = {
+        "status": "entry", "params": {"adx_min": 22.0},
+        "regime": {"trend": "up", "vol": "low", "adx": 40.0},
+        "plan": {"risk_pct_of_price": 2.0},
+        "evidence": {"validated": False, "oos_sharpe": 2.0, "gates": {g: True for g in "abcdef"}},
+    }
+    q = score_setup(perfect, rel_volume=2.0)
+    assert q["score"] == UNVALIDATED_CAP and q["capped"] is True
+    perfect["evidence"]["validated"] = True
+    assert score_setup(perfect, rel_volume=2.0)["score"] == 100
+
+
+def test_quant_score_rewards_the_right_things():
+    from openstock_analyst.quant_score import score_setup
+
+    base = {
+        "status": "none", "params": {"adx_min": 22.0},
+        "regime": {"trend": "down", "vol": "high", "adx": 10.0},
+        "evidence": {"validated": False, "oos_sharpe": None, "gates": {"a": False, "b": False}},
+    }
+    low = score_setup(base, rel_volume=None, stop_pct_estimate=12.0)["score"]
+    base["status"] = "entry"
+    base["plan"] = {"risk_pct_of_price": 3.0}
+    high = score_setup(base, rel_volume=1.8)["score"]
+    assert low == 0 and high > low
+
+
+def test_relative_volume_uses_prior_bars_only():
+    from openstock_analyst.setups import relative_volume
+
+    df = pd.DataFrame({"volume": [100.0] * 25 + [300.0]})
+    assert relative_volume(df) == pytest.approx(3.0)
+    assert relative_volume(df.iloc[:10]) is None

@@ -4,6 +4,7 @@ import { Watchlist } from '@/database/models/watchlist.model';
 import { readCache, writeCache } from '@/lib/cache';
 import { analystEnabled, fetchSetup } from '@/lib/analyst';
 import { linkedUsers, notify, stockLink, watchlistsFor } from '@/lib/notify';
+import { setupCacheKey } from '@/lib/strategies';
 import { setupMessage, transition, type SetupStatus, type StoredSetup } from '@/lib/setups';
 
 const MAX_SYMBOLS = 60; // one free analyst Space works through them one at a time
@@ -43,7 +44,7 @@ export const scanSetups = inngest.createFunction(
                     const setup = await fetchSetup(symbol, symbols.length);
                     const stored: StoredSetup = { setup, scannedAt: new Date().toISOString() };
                     const prev = (await readCache<SetupState>(`setup-state:${symbol}`))?.value;
-                    await writeCache(`setup:${symbol}`, stored);
+                    await writeCache(setupCacheKey('breakout', symbol), stored);
                     await writeCache<SetupState>(`setup-state:${symbol}`, { status: setup.status });
                     const kind = transition(prev?.status, setup.status);
                     return { ok: true as const, kind, stored };

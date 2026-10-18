@@ -6,6 +6,12 @@ export type SetupStatus = 'entry' | 'holding' | 'watch' | 'none';
 
 export type SetupGates = Record<string, boolean>;
 
+export type QuantPart = { key: string; label: string; points: number; max: number; note: string };
+export type QuantLabel = 'Strong' | 'Good' | 'Fair' | 'Weak' | 'Poor';
+
+/** 0-100 setup-quality rating: an auditable checklist, capped at 69 until every validation gate passes. */
+export type QuantScore = { score: number; label: QuantLabel; capped: boolean; validated: boolean; components: QuantPart[] };
+
 export type Setup = {
     ticker: string;
     date: string;
@@ -18,6 +24,9 @@ export type Setup = {
         entry: number; stop: number; risk_per_share: number; risk_pct_of_price: number;
         target_2r: number; target_3r: number; bars_in_trade: number; exit_rule: string;
     };
+    volume?: { relative: number | null };
+    /** Absent on results stored before the quant score existed. */
+    quant?: QuantScore;
     evidence: {
         validated: boolean;
         oos_sharpe: number | null;
@@ -41,10 +50,11 @@ export const STATUS_LABEL: Record<SetupStatus, string> = {
 
 const STATUS_RANK: Record<SetupStatus, number> = { entry: 0, watch: 1, holding: 2, none: 3 };
 
-/** Validated first, then by how actionable the status is. */
+/** Validated first, then by how actionable the status is, then by quant score (highest first). */
 export function sortSetups<T extends { setup: Setup | null }>(rows: T[]): T[] {
     const rank = (r: T) => (r.setup ? (r.setup.evidence.validated ? 0 : 10) + STATUS_RANK[r.setup.status] : 99);
-    return [...rows].sort((a, b) => rank(a) - rank(b));
+    const score = (r: T) => r.setup?.quant?.score ?? -1;
+    return [...rows].sort((a, b) => rank(a) - rank(b) || score(b) - score(a));
 }
 
 /** Whole shares that lose `riskPct`% of the account if the stop is hit; null if the inputs can't size a trade. */
@@ -86,6 +96,7 @@ export function setupMessage(link: string, setup: Setup, kind: Exclude<Transitio
         `🟢 <b>${link}: breakout entry</b> (${esc(regime)} regime)`,
         `Entry about ${usd(p.entry)} · stop ${usd(p.stop)} (risk ${usd(p.risk_per_share)}/share, ${p.risk_pct_of_price}%)`,
         `Reference targets: 2R ${usd(p.target_2r)} · 3R ${usd(p.target_3r)}`,
+        ...(setup.quant ? [`Quant score: <b>${setup.quant.score}/100</b> (${esc(setup.quant.label)})${setup.quant.capped ? ', capped until validated' : ''}`] : []),
         `Size: account × your risk % ÷ ${usd(p.risk_per_share)}`,
         `Evidence: walk-forward Sharpe ${ev.oos_sharpe ?? 'n/a'}, deflated Sharpe ${ev.deflated_sharpe ?? 'n/a'} over ${ev.trials ?? '?'} trials`,
         `<i>${esc(tag)}</i>`,

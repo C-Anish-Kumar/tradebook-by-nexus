@@ -12,11 +12,10 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Watchlists and alerts**: star stocks, set price targets, get an email when they cross
 - **AI Analyst**: [TradingAgents](https://github.com/TauricResearch/TradingAgents) analysts, bull/bear
   researchers, a trader and a risk team debate a stock and save a rating plus a full report
-- **Strategy 1 (EMA + Supertrend)**: a 10/21 EMA + Supertrend (10,3) checklist on every stock page, a replay of it
-  over 1–10 years, and risk-adjusted scores (Sharpe, Sortino, Calmar, alpha/beta vs SPY)
-- **Strategy 2 (regime-aware breakout), on the Setups page**: a nightly scan of your watchlist for breakout entries
-  with entry, stop, targets and share size, each shown with its walk-forward evidence and a Deflated Sharpe;
-  setups that fail the gates are labelled *Unvalidated*
+- **Trade signals, one strategy at a time**: a nightly scan of your watchlist for **Strategy 2 (regime-aware breakout)**
+  entries with entry, stop, targets and share size. Every stock gets a **0-100 quant score** and its walk-forward
+  evidence (Deflated Sharpe, cost stress); setups that fail the gates are labelled *Unvalidated* and capped at 69.
+  More strategies plug into the same registry and are chosen with a tab on the Setups page
 - **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
 - **RL Lab**: train a reinforcement-learning trading agent ([Nexus](https://github.com/C-Anish-Kumar/nexus), built on
   FinRL) on a strategy template, compare it with buy-and-hold on data it never saw, and see today's signal
@@ -26,27 +25,42 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Macro dashboard**: a fear & greed gauge, the US Treasury yield curve and the economic calendar
 - **Earnings calendar**: upcoming reports for your watchlist with beat/miss, the week's biggest reporters,
   and a countdown on each stock page
-- **Telegram messages**: price alerts, a daily watchlist summary, Strategy 1 signal changes, Strategy 2 setups
-  (opt-in) and earnings reminders, sent by your own Telegram bot (connect from the Profile page). Each message
-  type has its own switch, so you choose which strategy, if any, texts you
+- **Telegram messages**: price alerts, a daily watchlist summary, trade signals (opt-in, one switch per strategy) and
+  earnings reminders, sent by your own Telegram bot (connect from the Profile page)
 - **Market overview**: sector heatmap, movers, top stories and sentiment from Reddit, X.com, news and Polymarket
 - **Emails**: AI-written welcome email, and a weekly news digest sent through Kit
 
-## Two strategies, your choice
+## Strategies
 
-The app runs two strategies side by side. They are independent: each has its own page, its own Telegram
-switch (Profile > Telegram) and its own schedule, so follow either one, both or neither.
+Trade signals come from a registry of strategies in [`lib/strategies.ts`](lib/strategies.ts). Each entry has a
+label, a switch (`enabled`), and, if it scans the watchlist, a tab on the Setups page and its own Telegram
+opt-in. A strategy that is off appears nowhere: no panel, no Telegram switch, no scheduled message.
 
 | | Strategy 1: EMA + Supertrend | Strategy 2: Regime-aware breakout |
 |---|---|---|
+| Status | **Off** (set `enabled: true` to bring it back) | **On** |
 | Idea | A fixed rule checklist: 10/21 EMA trend plus Supertrend (10,3) on daily candles | Trade a breakout only when the market regime (trend strength and volatility) allows it, with an ATR trailing stop |
-| Where | The **Strategy** panel on every stock page, plus its backtest | The **Setups** page |
+| Where | The Strategy and Backtest panels on every stock page | The **Setups** page and a quant-score panel on every stock page |
 | Evidence | A backtest over 1–10 years vs buy-and-hold | Walk-forward testing, a 2× cost stress test, baseline comparison and a Deflated Sharpe over every parameter tried |
 | Verdict | Entry, trim or exit | *Validated* only if every gate passes; otherwise *Unvalidated* (a paper-trade idea, not an edge) |
-| Telegram | "Strategy 1 signals", after the close (4:40 PM ET) | "Strategy 2 setups", after the close (4:55 PM ET), off by default |
+| Telegram | `signals` switch, after the close (4:40 PM ET) | `setups` switch, after the close (4:55 PM ET), off by default |
 | Code | `analyst-service/openstock_analyst/strategy.py`, `/signals`, `/backtest` | `analyst-service/openstock_analyst/aqp/`, `setups.py`, `/setups` |
 
-The shared labels live in [`lib/strategies.ts`](lib/strategies.ts).
+### Quant score (0-100)
+
+A transparent rating of how good a setup is right now, computed in `analyst-service/openstock_analyst/quant_score.py`.
+It is a checklist, not a forecast, and every part is shown on the Setups page.
+
+| Part | Points | What earns them |
+|---|---|---|
+| Evidence | 40 | Validation gates passed (24) and out-of-sample Sharpe (16) |
+| Trend and regime | 20 | Uptrend, trend strength above the strategy's own ADX threshold, calm volatility |
+| Setup readiness | 20 | Entry today 20, watching a breakout 12, already in a trend 6, nothing 0 |
+| Volume confirmation | 10 | A breakout on 1.5× average volume or more; a quiet approach to the level |
+| Risk quality | 10 | A tight stop: 3% of price or less scores full, 10% or more scores zero |
+
+Bands: 80+ Strong, 65-79 Good, 50-64 Fair, 35-49 Weak, below 35 Poor. A setup that has not passed every
+validation gate is **capped at 69**, so an unproven idea can never look like a proven one.
 
 ## Stack
 

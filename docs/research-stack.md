@@ -32,12 +32,12 @@ dashboard with a finance edition. Its map, conflict and webcam panels don't fit 
 
 ```
 Stock page                                   Portfolio Lab (/portfolio)
-├─ Strategy checklist   /signals             ├─ pick 2–12 tickers (watchlist prefilled), 3/5/10 years
-├─ Backtest             /backtest            ├─ methods table: out-of-sample return, volatility,
-│   └─ risk tiles (empyrical)                │  Sharpe, Sortino, max drawdown, Calmar, alpha/beta vs SPY
-├─ Fundamentals         /fundamentals        ├─ chosen method vs SPY equity curve + weights today
-│   (edgartools: 10-K, Form 4, filings)      ├─ efficient frontier with each stock plotted
-└─ AI Analyst           /analyses            └─ correlation matrix
+├─ Quant score          /setups              ├─ pick 2–12 tickers (watchlist prefilled), 3/5/10 years
+│   (Strategy 2)                             ├─ methods table: out-of-sample return, volatility,
+├─ Fundamentals         /fundamentals        │  Sharpe, Sortino, max drawdown, Calmar, alpha/beta vs SPY
+│   (edgartools: 10-K, Form 4, filings)      ├─ chosen method vs SPY equity curve + weights today
+├─ AI Analyst           /analyses            ├─ efficient frontier with each stock plotted
+└─ (Strategy 1: /signals, /backtest; off)    └─ correlation matrix
 ```
 
 Everything heavy runs on the analyst service (`analyst-service/`, a Hugging Face Space); the web app

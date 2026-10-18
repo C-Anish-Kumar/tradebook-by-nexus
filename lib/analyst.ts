@@ -1,5 +1,6 @@
-import { cached } from '@/lib/cache';
-import type { Setup } from '@/lib/setups';
+import { cached, readCache } from '@/lib/cache';
+import type { Setup, StoredSetup } from '@/lib/setups';
+import { setupCacheKey } from '@/lib/strategies';
 
 // Client for the TradingAgents service in analyst-service/ (hosted outside Vercel: a run takes minutes)
 
@@ -89,6 +90,17 @@ export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_00
     });
     if (!res.ok) throw new Error(`setups ${res.status}`);
     return res.json() as Promise<Setup>;
+}
+
+const SCAN_FRESH_MS = 36 * 3_600_000;
+
+// Setup for the stock page: last night's scan if it is recent (it priced in the whole watchlist's search),
+// otherwise a live single-stock read, shared for 30 minutes. Null while the Space sleeps.
+export async function getSetup(ticker: string): Promise<Setup | null> {
+    if (!analystEnabled) return null;
+    const stored = (await readCache<StoredSetup>(setupCacheKey('breakout', ticker)))?.value;
+    if (stored?.setup.quant && Date.now() - Date.parse(stored.scannedAt) < SCAN_FRESH_MS) return stored.setup;
+    return cached<Setup>(`setup-live:${ticker}`, 30 * 60_000, () => fetchSetup(ticker));
 }
 
 export type BacktestTrade = {

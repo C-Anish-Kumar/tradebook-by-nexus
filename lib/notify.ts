@@ -7,6 +7,8 @@ import { getLiveQuotes } from '@/lib/finnhub';
 import { escapeHtml, sendTelegram, TelegramBlockedError, telegramEnabled } from '@/lib/telegram';
 import { APP_URL } from '@/lib/brand';
 import type { StrategySignals } from '@/lib/analyst';
+import { STATUS_LABEL, type StoredSetup } from '@/lib/setups';
+import { setupCacheKey, STRATEGY_1, STRATEGY_2 } from '@/lib/strategies';
 import type { EarningsCalendar } from '@/lib/market-intel';
 
 export type LinkedUser = Pick<INotificationSettings, 'userId' | 'telegramChatId' | 'prefs'>;
@@ -54,7 +56,7 @@ const isStock = (s: string) => !s.includes(':');
 const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 const HOUR_LABEL: Record<string, string> = { bmo: 'before the open', amc: 'after the close', dmh: 'during the session' };
 
-/** Watchlist snapshot: moves, strategy verdicts (from the shared cache) and reports due soon. */
+/** Watchlist snapshot: moves, trade signals (from the shared cache) and reports due soon. */
 export async function buildWatchlistSummary(symbols: string[], title: string): Promise<string> {
     if (symbols.length === 0) return `<b>${escapeHtml(title)}</b>\nYour watchlist is empty. Star stocks on ${APP_URL} to get updates here.`;
     const quotes = await getLiveQuotes(symbols);
@@ -71,12 +73,23 @@ export async function buildWatchlistSummary(symbols: string[], title: string): P
     const unpriced = symbols.filter((s) => !rows.some((r) => r.s === s));
     if (unpriced.length) lines.push(`<i>No live quote for ${escapeHtml(unpriced.join(', '))}</i>`);
 
-    // Strategy verdicts already computed for the site; no extra service calls here
-    const verdicts = (await Promise.all(symbols.filter(isStock).map(async (s) => {
-        const v = (await readCache<StrategySignals>(`signals:${s}`))?.value;
-        return v && v.tone !== 'neutral' ? `${escapeHtml(s)}: ${escapeHtml(v.verdict)}` : null;
-    }))).filter(Boolean);
-    if (verdicts.length) lines.push('', '<b>Strategy</b>', ...verdicts as string[]);
+    // Signals the scans already computed; no extra service calls here. Only strategies that are switched on.
+    const stocks = symbols.filter(isStock);
+    if (STRATEGY_2.enabled) {
+        const setups = (await Promise.all(stocks.map(async (s) => {
+            const v = (await readCache<StoredSetup>(setupCacheKey('breakout', s)))?.value?.setup;
+            if (!v || (v.status !== 'entry' && v.status !== 'watch')) return null;
+            return `${stockLink(s)}: ${STATUS_LABEL[v.status]}${v.quant ? ` · quant ${v.quant.score}/100` : ''} (scan of ${v.date})`;
+        }))).filter(Boolean);
+        if (setups.length) lines.push('', `<b>${escapeHtml(STRATEGY_2.label)}: ${escapeHtml(STRATEGY_2.name)}</b>`, ...setups as string[]);
+    }
+    if (STRATEGY_1.enabled) {
+        const verdicts = (await Promise.all(stocks.map(async (s) => {
+            const v = (await readCache<StrategySignals>(`signals:${s}`))?.value;
+            return v && v.tone !== 'neutral' ? `${escapeHtml(s)}: ${escapeHtml(v.verdict)}` : null;
+        }))).filter(Boolean);
+        if (verdicts.length) lines.push('', `<b>${escapeHtml(STRATEGY_1.label)}: ${escapeHtml(STRATEGY_1.name)}</b>`, ...verdicts as string[]);
+    }
 
     const cal = (await readCache<EarningsCalendar>('earnings:calendar'))?.value;
     if (cal) {

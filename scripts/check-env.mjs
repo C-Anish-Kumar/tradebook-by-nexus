@@ -222,7 +222,7 @@ function getHint(key, type) {
         'NODEMAILER_EMAIL': 'Your Gmail address',
         'NODEMAILER_PASSWORD': 'Generate Gmail App Password: myaccount.google.com → Security → App passwords',
     };
-    return hints[key] || 'Check the OpenStock API_DOCS.md for setup instructions';
+    return hints[key] || 'See the README for setup instructions';
 }
 
 // Display Present Required Variables

@@ -1,4 +1,5 @@
 // Source code for this deployment (the AGPL asks network users to be offered it)
+import { STRATEGY_1 } from '@/lib/strategies';
 export const REPO_URL = 'https://github.com/C-Anish-Kumar/tradebook-by-nexus';
 
 // Sign-up form select options
@@ -133,13 +134,13 @@ export const CANDLE_CHART_WIDGET_CONFIG = (symbol: string) => ({
     watchlist: [],
     withdateranges: false,
     compareSymbols: [],
-    // The Strategy panel's indicators: 10/21 EMA, 50 DEMA and Supertrend (10,3)
-    studies: [
+    // Strategy 1's indicators (10/21 EMA, 50 DEMA, Supertrend 10,3) are drawn only while that strategy is on
+    studies: STRATEGY_1.enabled ? [
         { id: 'MAExp@tv-basicstudies', inputs: { length: 10 } },
         { id: 'MAExp@tv-basicstudies', inputs: { length: 21 } },
         { id: 'STD;DEMA', inputs: { in_0: 50 } },
         { id: 'STD;Supertrend', inputs: { in_0: 10, in_1: 3 } },
-    ],
+    ] : [],
     width: '100%',
     height: 600,
 });

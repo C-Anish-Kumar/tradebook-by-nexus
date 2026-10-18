@@ -23,9 +23,11 @@ from openstock_analyst.aqp.regime.detector import atr, detect_regimes
 from openstock_analyst.aqp.strategies.rules import BreakoutATR
 from openstock_analyst.aqp.validation.gates import run_gates
 from openstock_analyst.aqp.validation.ledger import TrialLedger
+from openstock_analyst.quant_score import score_setup
 
 DAILY_PPY = 252
 MIN_BARS = 400
+VOLUME_WINDOW = 20
 # Small on purpose: every extra setting is another chance to fool ourselves, and all are counted.
 PARAM_GRID = {"swing_n": [3, 5, 8], "adx_min": [15.0, 22.0], "trail_atr": [2.0, 3.0, 4.0]}
 WATCH_DISTANCE_ATR = 1.0   # within 1 ATR below the swing high counts as "watching a breakout"
@@ -98,6 +100,15 @@ def live_state(df: pd.DataFrame, params: dict) -> dict:
     return {"status": "none", "entry": None, "stop": None, "bars_in_trade": 0, "trigger": _num(level, 2)}
 
 
+def relative_volume(df: pd.DataFrame, window: int = VOLUME_WINDOW) -> float | None:
+    """Latest bar's volume as a multiple of the previous `window` bars' average (None if there is no volume data)."""
+    if len(df) <= window:
+        return None
+    avg = float(df.volume.iloc[-window - 1:-1].mean())
+    last = float(df.volume.iloc[-1])
+    return last / avg if avg > 0 and math.isfinite(last) else None
+
+
 def size_position(entry: float, stop: float, account: float | None, risk_pct: float = 1.0) -> dict | None:
     """Whole shares that risk `risk_pct`% of the account if the stop is hit. None if inputs don't allow it."""
     if not account or account <= 0 or entry is None or stop is None or entry <= stop:
@@ -151,6 +162,10 @@ def build_setup(daily: pd.DataFrame, account: float | None = None, risk_pct: flo
             "exit_rule": f"close below highest close since entry minus {params['trail_atr']} x ATR(14)",
         }
         out["size"] = size_position(st["entry"], st["stop"], account, risk_pct)
+    rel_vol = relative_volume(df)
+    out["volume"] = {"relative": _num(rel_vol, 2)}
+    stop_pct = (params["trail_atr"] * float(atr(df, 14).iloc[-1]) / float(df.close.iloc[-1])) * 100
+    out["quant"] = score_setup(out, rel_vol, stop_pct)
     out["warnings"] = _warnings(out)
     return out
 
@@ -167,4 +182,6 @@ def _warnings(s: dict) -> list[str]:
         w.append("Volatility is in its top band: stops are wide, so size shrinks.")
     if ev["trades"] is not None and ev["trades"] < 15:
         w.append("Few historical trades: the evidence is thin.")
+    if s["quant"]["capped"]:
+        w.append("Quant score is capped at 69 until every validation gate passes.")
     return w

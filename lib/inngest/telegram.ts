@@ -26,7 +26,7 @@ export const setupTelegramBot = inngest.createFunction(
     },
 );
 
-// After the US close: each linked user's watchlist moves, strategy verdicts and upcoming reports
+// After the US close: each linked user's watchlist moves, trade signals and upcoming reports
 export const sendDailySummaries = inngest.createFunction(
     { id: 'telegram-daily-summary', concurrency: 1, retries: 1, triggers: [{ event: 'app/telegram.daily' }, { cron: 'TZ=America/New_York 25 16 * * 1-5' }] },
     async ({ step }) => step.run('send', async () => {
@@ -46,10 +46,11 @@ export const sendDailySummaries = inngest.createFunction(
 
 type SignalState = { verdict: string; tone: string };
 
-// Daily after the close: re-check each watched stock's strategy and text watchers when the verdict changes
+// Strategy 1 (off by default): re-check each watched stock's checklist and text watchers when the verdict changes
 export const watchStrategySignals = inngest.createFunction(
     { id: 'telegram-strategy-signals', concurrency: 1, retries: 1, triggers: [{ event: 'app/telegram.signals' }, { cron: 'TZ=America/New_York 40 16 * * 1-5' }] },
     async ({ step }) => step.run('check', async () => {
+        if (!STRATEGY_1.enabled) return { skipped: `${STRATEGY_1.label} is switched off in lib/strategies.ts` };
         if (!analystEnabled) return { skipped: 'analyst service not configured' };
         const users = await linkedUsers('signals');
         if (!users.length) return { checked: 0 };
