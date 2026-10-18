@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { enabledStrategies, scannerStrategies, setupCacheKey, STRATEGIES, STRATEGY_1, STRATEGY_2 } from '@/lib/strategies';
+import { enabledStrategies, scannerStrategies, setupCacheKey, setupStateKey, STRATEGIES, STRATEGY_1, STRATEGY_2 } from '@/lib/strategies';
 
 describe('strategy registry', () => {
-    it('runs Strategy 2 only for now', () => {
-        expect(enabledStrategies().map((s) => s.id)).toEqual(['breakout']);
+    it('runs Strategy 2 and the playbook strategies, with Strategy 1 off', () => {
+        expect(enabledStrategies().map((s) => s.id)).toEqual(['breakout', 'ma_pullback', 'golden_cross', 'breakout_retest', 'volume_bounce']);
         expect(STRATEGY_1.enabled).toBe(false);
         expect(STRATEGY_2.enabled).toBe(true);
     });
@@ -21,5 +21,7 @@ describe('strategy registry', () => {
     it('keeps the original cache key for breakout so stored scans survive, and namespaces the rest', () => {
         expect(setupCacheKey('breakout', 'MU')).toBe('setup:MU');
         expect(setupCacheKey('ema_supertrend', 'MU')).toBe('setup:ema_supertrend:MU');
+        expect(setupStateKey('breakout', 'MU')).toBe('setup-state:MU');
+        expect(setupStateKey('golden_cross', 'MU')).toBe('setup-state:golden_cross:MU');
     });
 });

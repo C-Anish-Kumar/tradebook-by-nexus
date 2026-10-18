@@ -8,7 +8,7 @@ import { escapeHtml, sendTelegram, TelegramBlockedError, telegramEnabled } from 
 import { APP_URL } from '@/lib/brand';
 import type { StrategySignals } from '@/lib/analyst';
 import { STATUS_LABEL, type StoredSetup } from '@/lib/setups';
-import { setupCacheKey, STRATEGY_1, STRATEGY_2 } from '@/lib/strategies';
+import { scannerStrategies, setupCacheKey, STRATEGY_1 } from '@/lib/strategies';
 import type { EarningsCalendar } from '@/lib/market-intel';
 
 export type LinkedUser = Pick<INotificationSettings, 'userId' | 'telegramChatId' | 'prefs'>;
@@ -75,13 +75,13 @@ export async function buildWatchlistSummary(symbols: string[], title: string): P
 
     // Signals the scans already computed; no extra service calls here. Only strategies that are switched on.
     const stocks = symbols.filter(isStock);
-    if (STRATEGY_2.enabled) {
-        const setups = (await Promise.all(stocks.map(async (s) => {
-            const v = (await readCache<StoredSetup>(setupCacheKey('breakout', s)))?.value?.setup;
+    for (const strategy of scannerStrategies()) {
+        const found = (await Promise.all(stocks.map(async (s) => {
+            const v = (await readCache<StoredSetup>(setupCacheKey(strategy.id, s)))?.value?.setup;
             if (!v || (v.status !== 'entry' && v.status !== 'watch')) return null;
             return `${stockLink(s)}: ${STATUS_LABEL[v.status]}${v.quant ? ` · quant ${v.quant.score}/100` : ''} (scan of ${v.date})`;
         }))).filter(Boolean);
-        if (setups.length) lines.push('', `<b>${escapeHtml(STRATEGY_2.label)}: ${escapeHtml(STRATEGY_2.name)}</b>`, ...setups as string[]);
+        if (found.length) lines.push('', `<b>${escapeHtml(strategy.label)}: ${escapeHtml(strategy.name)}</b>`, ...found as string[]);
     }
     if (STRATEGY_1.enabled) {
         const verdicts = (await Promise.all(stocks.map(async (s) => {

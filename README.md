@@ -12,10 +12,11 @@ Live at **https://open-stock-nexus.vercel.app**
 - **Watchlists and alerts**: star stocks, set price targets, get an email when they cross
 - **AI Analyst**: [TradingAgents](https://github.com/TauricResearch/TradingAgents) analysts, bull/bear
   researchers, a trader and a risk team debate a stock and save a rating plus a full report
-- **Trade signals, one strategy at a time**: a nightly scan of your watchlist for **Strategy 2 (regime-aware breakout)**
-  entries with entry, stop, targets and share size. Every stock gets a **0-100 quant score** and its walk-forward
-  evidence (Deflated Sharpe, cost stress); setups that fail the gates are labelled *Unvalidated* and capped at 69.
-  More strategies plug into the same registry and are chosen with a tab on the Setups page
+- **Trade signals from six strategies you choose between**: a nightly scan of your watchlist, one tab per strategy on
+  the Setups page. Every stock gets a **0-100 quant score** and its walk-forward evidence (Deflated Sharpe, cost
+  stress); setups that fail the gates are labelled *Unvalidated* and capped at 69
+- **Ask**: a chat page where you ask for signals in plain words ("best setups on my watchlist today", "every strategy on
+  MU"). Answers quote only the stored scans, with the score, entry, stop and whether the setup is validated
 - **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
 - **RL Lab**: train a reinforcement-learning trading agent ([Nexus](https://github.com/C-Anish-Kumar/nexus), built on
   FinRL) on a strategy template, compare it with buy-and-hold on data it never saw, and see today's signal
@@ -36,15 +37,26 @@ Trade signals come from a registry of strategies in [`lib/strategies.ts`](lib/st
 label, a switch (`enabled`), and, if it scans the watchlist, a tab on the Setups page and its own Telegram
 opt-in. A strategy that is off appears nowhere: no panel, no Telegram switch, no scheduled message.
 
-| | Strategy 1: EMA + Supertrend | Strategy 2: Regime-aware breakout |
+| | Idea | Status |
 |---|---|---|
-| Status | **Off** (set `enabled: true` to bring it back) | **On** |
-| Idea | A fixed rule checklist: 10/21 EMA trend plus Supertrend (10,3) on daily candles | Trade a breakout only when the market regime (trend strength and volatility) allows it, with an ATR trailing stop |
-| Where | The Strategy and Backtest panels on every stock page | The **Setups** page and a quant-score panel on every stock page |
-| Evidence | A backtest over 1–10 years vs buy-and-hold | Walk-forward testing, a 2× cost stress test, baseline comparison and a Deflated Sharpe over every parameter tried |
-| Verdict | Entry, trim or exit | *Validated* only if every gate passes; otherwise *Unvalidated* (a paper-trade idea, not an edge) |
-| Telegram | `signals` switch, after the close (4:40 PM ET) | `setups` switch, after the close (4:55 PM ET), off by default |
-| Code | `analyst-service/openstock_analyst/strategy.py`, `/signals`, `/backtest` | `analyst-service/openstock_analyst/aqp/`, `setups.py`, `/setups` |
+| Strategy 1: EMA + Supertrend | A fixed checklist: 10/21 EMA trend plus Supertrend (10,3). Stock-page panels, `/signals`, `/backtest` | **Off** (set `enabled: true`) |
+| Strategy 2: Regime-aware breakout | Breakout above a swing high only when ADX says trending, ATR trailing stop | On |
+| Strategy 3: 20/50 MA pullback | Buy a low-volume pullback to the 20 MA once the 20/50 cross is established | On |
+| Strategy 4: Golden cross pullback | After the 50 MA crosses above a rising 200 MA, buy the pullback toward the 50 | On |
+| Strategy 5: Breakout and retest | Breakout on rising volume, then buy the low-volume retest of the broken level | On |
+| Strategy 6: High-volume bounce | Hammer or bullish engulfing on standout volume at support, stop below its low | On |
+
+Strategies 3-6 come from the TEDucation 2.0 trading knowledge base (daily-chart setups only; the VWAP, opening-range,
+premarket and volume-profile setups need minute data and are not built). The PDF often says "per your plan" for stops,
+so the numbers are this project's reading of the rules, listed in
+`analyst-service/openstock_analyst/aqp/strategies/playbook.py`. Every strategy goes through the same gates:
+walk-forward testing, a 2x cost stress test, buy-and-hold and MA-cross baselines, and a Deflated Sharpe. The scan
+tells the Deflated Sharpe that it searched every stock x strategy pair, so choosing the best of many is priced in.
+Slow signals such as the golden cross trade rarely, so they often fail the "enough trades" gate: that is the evidence
+speaking, not a bug.
+
+Telegram: each strategy has its own opt-in switch (Strategy 2 uses `setups`; Strategy 1 uses `signals`), sent after the
+close (the 4:55 PM ET scan; Strategy 1's job runs at 4:40 PM ET).
 
 ### Quant score (0-100)
 
@@ -105,7 +117,7 @@ Run `npm run check-env` to see which of these your `.env` has.
 | `FRED_API_KEY` | free from https://fred.stlouisfed.org/docs/api/api_key.html; turns on the economic calendar |
 | `ADANOS_API_KEY`, `ADANOS_API_BASE_URL` | stock sentiment from Reddit, X.com, news and Polymarket |
 
-**Optional: analyst service (AI Analyst, Strategy 1, Strategy 2, fundamentals, Portfolio Lab)**
+**Optional: analyst service (AI Analyst, trade-signal strategies, Ask chat, fundamentals, Portfolio Lab)**
 
 | Variable | |
 |---|---|

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { STRATEGIES } from '@/lib/strategies';
 import { setupMessage, sizeShares, sortSetups, transition, type QuantScore, type Setup } from '@/lib/setups';
 
 const base = (over: Partial<Setup> = {}, validated = false): Setup => ({
@@ -83,5 +84,12 @@ describe('quant score', () => {
         const msg = setupMessage('MU', base({ quant: quant(68, true) }), 'entry');
         expect(msg).toContain('Quant score: <b>68/100</b> (Good), capped until validated');
         expect(setupMessage('MU', base(), 'entry')).not.toContain('Quant score');
+    });
+
+    it('names the strategy that fired', () => {
+        const msg = setupMessage('MU', base(), 'entry', STRATEGIES.golden_cross);
+        expect(msg).toContain('Golden cross pullback entry');
+        expect(msg).toContain('Strategy 4');
+        expect(setupMessage('MU', base(), 'exit', STRATEGIES.volume_bounce)).toContain('High-volume bounce trade ended');
     });
 });

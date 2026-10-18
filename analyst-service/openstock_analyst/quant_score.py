@@ -57,22 +57,22 @@ def _regime(regime: dict, adx_min: float) -> dict:
 
 
 def _readiness(status: str) -> dict:
-    notes = {"entry": "breakout entry signalled on the latest bar", "watch": "price is within 1 ATR of the breakout level",
-             "holding": "already in a trend, so not a fresh entry", "none": "no breakout in play"}
+    notes = {"entry": "entry signalled on the latest bar", "watch": "price is near the level where an entry would trigger",
+             "holding": "already in the trade, so not a fresh entry", "none": "no entry in play"}
     return _part("readiness", "Setup readiness", READINESS.get(status, 0.0), notes.get(status, ""))
 
 
-def _volume(status: str, rel_volume: float | None) -> dict:
-    """Volume rule from the VPA playbook: a breakout needs high volume, a pullback to a level wants low."""
+def _volume(status: str, rel_volume: float | None, rule: str = "high") -> dict:
+    """Volume rule from the VPA playbook: breakouts and bounces need high volume, pullbacks and retests want low."""
     if rel_volume is None or status == "none":
-        return _part("volume", "Volume confirmation", 0.0, "no breakout in play to confirm")
+        return _part("volume", "Volume confirmation", 0.0, "no entry in play to confirm")
     rv = rel_volume
-    if status == "watch":
-        pts = 10 * _clamp((1.2 - rv) / 0.6)      # quiet approach: 0.6x average or less scores full
-        note = f"{rv:.2f}x average volume; a quiet approach to the level is healthier"
+    if status == "watch" or rule == "low":
+        pts = 10 * _clamp((1.2 - rv) / 0.6)      # quiet: 0.6x average or less scores full
+        note = f"{rv:.2f}x average volume; a quiet approach or pullback is healthier"
     else:
         pts = 10 * _clamp((rv - 0.8) / 0.7)      # heavy volume: 1.5x average or more scores full
-        note = f"{rv:.2f}x average volume; a breakout should come on heavy volume"
+        note = f"{rv:.2f}x average volume; this entry should come on heavy volume"
     return _part("volume", "Volume confirmation", pts, note)
 
 
@@ -85,14 +85,15 @@ def _risk(setup: dict, atr_pct_of_price: float | None) -> dict:
     return _part("risk", "Risk quality", pts, f"stop is about {stop_pct:.1f}% below the price; tighter means a smaller position risk")
 
 
-def score_setup(setup: dict, rel_volume: float | None = None, stop_pct_estimate: float | None = None) -> dict:
+def score_setup(setup: dict, rel_volume: float | None = None, stop_pct_estimate: float | None = None,
+                volume_rule: str = "high") -> dict:
     """Score a built setup (the dict from `build_setup`, before warnings). Returns score, label and the breakdown."""
     ev = setup["evidence"]
     parts = [
         _evidence(ev),
-        _regime(setup["regime"], setup["params"]["adx_min"]),
+        _regime(setup["regime"], setup["params"].get("adx_min", 22.0)),
         _readiness(setup["status"]),
-        _volume(setup["status"], rel_volume),
+        _volume(setup["status"], rel_volume, volume_rule),
         _risk(setup, stop_pct_estimate),
     ]
     raw = sum(p["points"] for p in parts)

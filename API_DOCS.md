@@ -35,7 +35,7 @@ Times are in US Eastern where a time zone is shown, otherwise UTC.
 | `write-market-brief` | 8:50, 12:50, 16:50 ET weekdays, event `app/market.brief` | AI market brief |
 | `run-ai-analysis` | event `app/analysis.requested` | One TradingAgents analysis on the analyst Space |
 | `run-rl-job` | event `app/rl.requested` | One RL Lab training or scoring job on the Nexus Space |
-| `scan-setups` | 16:55 ET weekdays, event `app/setups.scan` | **Strategy 2**: scans every watchlisted symbol, one step per symbol, stores the setup with its 0-100 quant score, and messages opted-in users on entries and exits |
+| `scan-setups` | 16:55 ET weekdays, event `app/setups.scan` | **Strategies 2-6**: scans every watchlisted symbol under every enabled strategy, one step per symbol and strategy, stores the setup with its 0-100 quant score, and messages opted-in users on entries and exits |
 | `telegram-setup` | event `app/telegram.setup` | Registers the Telegram webhook and commands (run once) |
 | `telegram-daily-summary` | 16:25 ET weekdays | Watchlist summary |
 | `telegram-strategy-signals` | 16:40 ET weekdays | **Strategy 1** (off by default, see `lib/strategies.ts`): messages users when a stock's verdict changes |
@@ -51,7 +51,7 @@ All routes except `/` need the `X-Analyst-Key` header.
 |---|---|---|
 | `GET /signals/{ticker}` | Strategy 1 | 10/21 EMA + Supertrend checklist, cached 15 minutes |
 | `GET /backtest/{ticker}?years=` | Strategy 1 | Replay of the strategy with risk-adjusted scores |
-| `GET /setups/{ticker}?account=&risk_pct=&universe=` | Strategy 2 | Regime-aware breakout state, plan, walk-forward evidence and the 0-100 `quant` score with its breakdown, cached 30 minutes |
+| `GET /setups/{ticker}?strategy=&account=&risk_pct=&universe=` | Strategies 2-6 (`strategy` = `breakout`, `ma_pullback`, `golden_cross`, `breakout_retest`, `volume_bounce`) | Regime-aware breakout state, plan, walk-forward evidence and the 0-100 `quant` score with its breakdown, cached 30 minutes |
 | `GET /fundamentals/{ticker}` | | SEC 10-K figures, insider trades, filings |
 | `POST /portfolio/optimize` | | Portfolio Lab allocations |
 | `POST /analyses`, `GET /analyses/{id}` | | AI Analyst jobs |

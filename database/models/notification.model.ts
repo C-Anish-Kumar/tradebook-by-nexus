@@ -1,6 +1,10 @@
 import { Schema, model, models, type Model } from 'mongoose';
 
-export type NotificationPrefs = { alerts: boolean; daily: boolean; signals: boolean; earnings: boolean; setups: boolean };
+// signals = Strategy 1; setups = Strategy 2; the rest are the playbook strategies (each opt-in)
+export type NotificationPrefs = {
+    alerts: boolean; daily: boolean; signals: boolean; earnings: boolean;
+    setups: boolean; maPullback: boolean; goldenCross: boolean; breakoutRetest: boolean; volumeBounce: boolean;
+};
 
 export interface INotificationSettings {
     userId: string;
@@ -26,6 +30,10 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>(
             earnings: { type: Boolean, default: true },
             // Opt-in: breakout setups are hypotheses, so nobody gets them without asking
             setups: { type: Boolean, default: false },
+            maPullback: { type: Boolean, default: false },
+            goldenCross: { type: Boolean, default: false },
+            breakoutRetest: { type: Boolean, default: false },
+            volumeBounce: { type: Boolean, default: false },
         },
     },
     { timestamps: true, versionKey: false }

@@ -1,6 +1,6 @@
 import { cached, readCache } from '@/lib/cache';
 import type { Setup, StoredSetup } from '@/lib/setups';
-import { setupCacheKey } from '@/lib/strategies';
+import { setupCacheKey, type StrategyId } from '@/lib/strategies';
 
 // Client for the TradingAgents service in analyst-service/ (hosted outside Vercel: a run takes minutes)
 
@@ -82,8 +82,8 @@ export async function getStrategySignals(ticker: string): Promise<StrategySignal
 
 // Regime + breakout setup with its walk-forward evidence. `universe` = how many tickers this scan covers,
 // so the service's Deflated Sharpe prices in the search. Validation is slow on a cold Space: allow a minute.
-export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_000): Promise<Setup> {
-    const res = await fetch(`${SERVICE_URL}/setups/${encodeURIComponent(ticker)}?universe=${universe}`, {
+export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_000, strategy: StrategyId = 'breakout'): Promise<Setup> {
+    const res = await fetch(`${SERVICE_URL}/setups/${encodeURIComponent(ticker)}?universe=${universe}&strategy=${strategy}`, {
         headers: serviceHeaders(),
         cache: 'no-store',
         signal: AbortSignal.timeout(timeoutMs),
@@ -94,13 +94,13 @@ export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_00
 
 const SCAN_FRESH_MS = 36 * 3_600_000;
 
-// Setup for the stock page: last night's scan if it is recent (it priced in the whole watchlist's search),
+// One strategy's setup for a stock: last night's scan if it is recent (it priced in the whole watchlist's search),
 // otherwise a live single-stock read, shared for 30 minutes. Null while the Space sleeps.
-export async function getSetup(ticker: string): Promise<Setup | null> {
+export async function getSetup(ticker: string, strategy: StrategyId = 'breakout'): Promise<Setup | null> {
     if (!analystEnabled) return null;
-    const stored = (await readCache<StoredSetup>(setupCacheKey('breakout', ticker)))?.value;
+    const stored = (await readCache<StoredSetup>(setupCacheKey(strategy, ticker)))?.value;
     if (stored?.setup.quant && Date.now() - Date.parse(stored.scannedAt) < SCAN_FRESH_MS) return stored.setup;
-    return cached<Setup>(`setup-live:${ticker}`, 30 * 60_000, () => fetchSetup(ticker));
+    return cached<Setup>(`setup-live:${strategy}:${ticker}`, 30 * 60_000, () => fetchSetup(ticker, 1, 60_000, strategy));
 }
 
 export type BacktestTrade = {

@@ -1,6 +1,6 @@
 // Trade setups from the analyst service's /setups endpoint: types and the pure helpers around them
 // (no server-only imports, so the page, the Inngest job and the tests can all share them).
-import { STRATEGY_2 } from '@/lib/strategies';
+import { STRATEGY_2, type Strategy, type StrategyId } from '@/lib/strategies';
 
 export type SetupStatus = 'entry' | 'holding' | 'watch' | 'none';
 
@@ -14,12 +14,14 @@ export type QuantScore = { score: number; label: QuantLabel; capped: boolean; va
 
 export type Setup = {
     ticker: string;
+    /** Absent on results stored before there was more than one strategy (those are the breakout). */
+    strategy?: StrategyId;
     date: string;
     close: number;
     regime: { trend: 'up' | 'down' | 'range' | null; vol: 'high' | 'low' | null; adx: number | null; atr_pct_rank: number | null };
     status: SetupStatus;
     trigger: number | null;
-    params: { swing_n: number; adx_min: number; trail_atr: number };
+    params: Record<string, number>;
     plan?: {
         entry: number; stop: number; risk_per_share: number; risk_pct_of_price: number;
         target_2r: number; target_3r: number; bars_in_trade: number; exit_rule: string;
@@ -78,28 +80,28 @@ const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** Telegram HTML for one change. `link` is the already-escaped stock link. */
-export function setupMessage(link: string, setup: Setup, kind: Exclude<Transition, null>): string {
+export function setupMessage(link: string, setup: Setup, kind: Exclude<Transition, null>, strategy: Strategy = STRATEGY_2): string {
     const ev = setup.evidence;
     const tag = ev.validated
         ? '✅ Passed every validation gate'
         : '⚠️ Unvalidated: paper-trade it, do not size it like an edge';
     if (kind === 'exit') {
         return [
-            `🔴 <b>${link}: breakout trade ended</b>`,
-            `The trailing stop was hit (close ${usd(setup.close)}).`,
+            `🔴 <b>${link}: ${esc(strategy.name)} trade ended</b>`,
+            `The exit rule was hit (close ${usd(setup.close)}).`,
             `<i>${esc(tag)}</i>`,
         ].join('\n');
     }
     const p = setup.plan!;
     const regime = [setup.regime.trend, setup.regime.vol && `${setup.regime.vol} vol`].filter(Boolean).join(', ');
     return [
-        `🟢 <b>${link}: breakout entry</b> (${esc(regime)} regime)`,
+        `🟢 <b>${link}: ${esc(strategy.name)} entry</b> (${esc(regime)} regime)`,
         `Entry about ${usd(p.entry)} · stop ${usd(p.stop)} (risk ${usd(p.risk_per_share)}/share, ${p.risk_pct_of_price}%)`,
         `Reference targets: 2R ${usd(p.target_2r)} · 3R ${usd(p.target_3r)}`,
         ...(setup.quant ? [`Quant score: <b>${setup.quant.score}/100</b> (${esc(setup.quant.label)})${setup.quant.capped ? ', capped until validated' : ''}`] : []),
         `Size: account × your risk % ÷ ${usd(p.risk_per_share)}`,
         `Evidence: walk-forward Sharpe ${ev.oos_sharpe ?? 'n/a'}, deflated Sharpe ${ev.deflated_sharpe ?? 'n/a'} over ${ev.trials ?? '?'} trials`,
         `<i>${esc(tag)}</i>`,
-        `<i>${STRATEGY_2.label} (${STRATEGY_2.name}), daily candles. Not financial advice.</i>`,
+        `<i>${strategy.label} (${esc(strategy.name)}), daily candles. Not financial advice.</i>`,
     ].join('\n');
 }

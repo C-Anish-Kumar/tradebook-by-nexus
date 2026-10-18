@@ -15,16 +15,11 @@ import type { NotificationPrefs } from "@/database/models/notification.model";
 import { cn } from "@/lib/utils";
 import { enabledStrategies } from "@/lib/strategies";
 
-const STRATEGY_DETAIL: Record<string, string> = {
-    ema_supertrend: 'when a watched stock turns into an entry, trim or exit',
-    breakout: 'a fresh breakout entry or exit on a watched stock, with its quant score and evidence',
-};
-
 const OPTIONS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
     { key: 'alerts', label: 'Price alerts', detail: 'The moment one of your alerts triggers' },
     { key: 'daily', label: 'Daily summary', detail: 'Your watchlist after each US market close' },
     // One switch per strategy that is turned on; a strategy that is off never appears here
-    ...enabledStrategies().map((s) => ({ key: s.telegramPref, label: `${s.label}: ${s.name}`, detail: STRATEGY_DETAIL[s.id] })),
+    ...enabledStrategies().map((s) => ({ key: s.telegramPref, label: `${s.label}: ${s.name}`, detail: `${s.rules}. A fresh entry or exit on a watched stock, with its quant score.` })),
     { key: 'earnings', label: 'Earnings', detail: 'The day before a watched stock reports, then beat or miss' },
 ];
 
