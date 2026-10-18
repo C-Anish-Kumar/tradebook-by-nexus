@@ -9,4 +9,4 @@ app_file: app.py
 pinned: false
 ---
 
-Runs TradingAgents for Tradebook by Nexus's AI Analyst. See analyst-service/README.md in the tradebook-by-nexus repo.
+Runs TradingAgents for Apex Tradebook's AI Analyst. See analyst-service/README.md in the tradebook-by-nexus repo.

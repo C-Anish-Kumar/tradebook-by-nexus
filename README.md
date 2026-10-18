@@ -1,9 +1,9 @@
-# Tradebook by Nexus
+# Apex Tradebook
 
 A free market terminal: live prices, watchlists, email price alerts, company insights, and an
 **AI analyst team** that debates any stock and rates it from Buy to Sell.
 
-Live at **https://open-stock-nexus.vercel.app**
+Live at **https://apex-tradebook.vercel.app**
 
 ## Features
 
@@ -160,7 +160,7 @@ npx tsc --noEmit    # type check
 
 ## Credits and license
 
-Tradebook by Nexus is built on [OpenStock](https://github.com/Open-Dev-Society/OpenStock) by
+Apex Tradebook is built on [OpenStock](https://github.com/Open-Dev-Society/OpenStock) by
 Open Dev Society and uses [TradingAgents](https://github.com/TauricResearch/TradingAgents) by Tauric
 Research (Apache-2.0), [edgartools](https://github.com/dgunning/edgartools) (MIT),
 [skfolio](https://github.com/skfolio/skfolio) (BSD-3) and

@@ -7,7 +7,7 @@ import Panel from '@/components/Panel';
 import { scannerStrategies } from '@/lib/strategies';
 import { cn } from '@/lib/utils';
 
-export const metadata = { title: 'Setups | Tradebook by Nexus' };
+export const metadata = { title: 'Setups | Apex Tradebook' };
 
 export default async function SetupsPage({ searchParams }: { searchParams: Promise<{ strategy?: string }> }) {
     const { strategy: wanted } = await searchParams;

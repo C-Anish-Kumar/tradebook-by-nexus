@@ -1,4 +1,4 @@
-# AI Analyst service (Tradebook by Nexus)
+# AI Analyst service (Apex Tradebook)
 
 Runs [TradingAgents](https://github.com/TauricResearch/TradingAgents) (Apache-2.0) for Tradebook's
 **AI Analyst** panel. A run takes 5–15 minutes and dozens of LLM calls, which is longer than a Vercel

@@ -24,7 +24,7 @@ INSIDER_LIMIT = 15
 
 def _identity() -> str:
     # The SEC asks every client to identify itself with a contact address
-    return os.environ.get("SEC_IDENTITY") or "Tradebook by Nexus research@tradebook-by-nexus.app"
+    return os.environ.get("SEC_IDENTITY") or "Apex Tradebook research@tradebook-by-nexus.app"
 
 
 def _periods(financials) -> list[str]:

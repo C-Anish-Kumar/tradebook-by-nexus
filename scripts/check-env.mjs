@@ -4,7 +4,7 @@
  * Environment Variables Checker
  * Run: npm run check-env
  *
- * Checks your .env file against the requirements for Tradebook by Nexus.
+ * Checks your .env file against the requirements for Apex Tradebook.
  * Provides detailed feedback on missing, present, and deprecated variables,
  * along with guidance on how to fix common issues.
  */

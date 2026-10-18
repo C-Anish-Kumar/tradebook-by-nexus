@@ -7,7 +7,7 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no">
     <meta name="x-apple-disable-message-reformatting">
-    <title>Welcome to Tradebook by Nexus</title>
+    <title>Welcome to Apex Tradebook</title>
     <!--[if mso]>
     <noscript>
         <xml>
@@ -99,7 +99,7 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
                     <!-- Header with Logo -->
                     <tr>
                         <td align="left" class="mobile-header-padding" style="padding: 40px 40px 20px 40px;">
-                            <span style="font-family: Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">Tradebook</span> <span style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 600; color: #8f9aa0; letter-spacing: 1.5px; text-transform: uppercase;">by Nexus</span>
+                            <span style="font-family: Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">Apex Tradebook</span>
                         </td>
                     </tr>
 
@@ -147,7 +147,7 @@ export const WELCOME_EMAIL_TEMPLATE = `<!DOCTYPE html>
                             <p class="mobile-text dark-text-muted" style="margin: 40px 0 0 0; font-size: 14px; line-height: 1.5; color: #CCDADC !important; text-align: center;">
                                 <a href="#" style="color: #CCDADC !important; text-decoration: underline;">Unsubscribe</a> |
                                 <a href="${APP_URL}" style="color: #CCDADC !important; text-decoration: underline;">Visit Tradebook</a><br>
-                                © ${new Date().getFullYear()} Tradebook by Nexus
+                                © ${new Date().getFullYear()} Apex Tradebook
                             </p>
                         </td>
                     </tr>
@@ -265,7 +265,7 @@ export const STOCK_ALERT_UPPER_EMAIL_TEMPLATE = `<!DOCTYPE html>
                     <!-- Header with Logo -->
                     <tr>
                         <td align="left" class="mobile-header-padding" style="padding: 40px 40px 20px 40px;">
-                            <span style="font-family: Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">Tradebook</span> <span style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 600; color: #8f9aa0; letter-spacing: 1.5px; text-transform: uppercase;">by Nexus</span>
+                            <span style="font-family: Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">Apex Tradebook</span>
                         </td>
                     </tr>
 
@@ -355,7 +355,7 @@ export const STOCK_ALERT_UPPER_EMAIL_TEMPLATE = `<!DOCTYPE html>
                                     <a href="${APP_URL}" style="color: #CCDADC !important; text-decoration: underline;">Visit Tradebook</a>
                                 </p>
                                 <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #CCDADC !important;">
-                                    © ${new Date().getFullYear()} Tradebook by Nexus
+                                    © ${new Date().getFullYear()} Apex Tradebook
                             </div>
                         </td>
                     </tr>
@@ -473,7 +473,7 @@ export const STOCK_ALERT_LOWER_EMAIL_TEMPLATE = `<!DOCTYPE html>
                     <!-- Header with Logo -->
                     <tr>
                         <td align="left" class="mobile-header-padding" style="padding: 40px 40px 20px 40px;">
-                            <span style="font-family: Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">Tradebook</span> <span style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 600; color: #8f9aa0; letter-spacing: 1.5px; text-transform: uppercase;">by Nexus</span>
+                            <span style="font-family: Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.5px;">Apex Tradebook</span>
                         </td>
                     </tr>
 
@@ -563,7 +563,7 @@ export const STOCK_ALERT_LOWER_EMAIL_TEMPLATE = `<!DOCTYPE html>
                                     <a href="${APP_URL}" style="color: #CCDADC !important; text-decoration: underline;">Visit Tradebook</a>
                                 </p>
                                 <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #CCDADC !important;">
-                                    © ${new Date().getFullYear()} Tradebook by Nexus
+                                    © ${new Date().getFullYear()} Apex Tradebook
                                 </p>
                             </div>
                         </td>

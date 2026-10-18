@@ -4,7 +4,7 @@ import { analystEnabled } from '@/lib/analyst';
 import PortfolioLab from '@/components/portfolio/PortfolioLab';
 import Panel from '@/components/Panel';
 
-export const metadata = { title: 'Portfolio Lab | Tradebook by Nexus' };
+export const metadata = { title: 'Portfolio Lab | Apex Tradebook' };
 
 export default async function PortfolioPage() {
     const items = await getUserWatchlist();

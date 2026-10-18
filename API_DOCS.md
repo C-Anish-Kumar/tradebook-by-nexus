@@ -1,4 +1,4 @@
-# Tradebook by Nexus: background jobs and integrations
+# Apex Tradebook: background jobs and integrations
 
 How the app runs behind the scenes. For setup and environment variables see the [README](README.md); the
 analyst service has its own guide in [`analyst-service/README.md`](analyst-service/README.md).
@@ -73,5 +73,5 @@ ids are tried before giving up.
 | Telegram Bot API | alerts, summaries, strategy messages | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` |
 | MongoDB Atlas | users, watchlists, alerts, analyses, cache | `MONGODB_URI` |
 
-Tradebook by Nexus is built on [OpenStock](https://github.com/Open-Dev-Society/OpenStock) and is licensed
+Apex Tradebook is built on [OpenStock](https://github.com/Open-Dev-Society/OpenStock) and is licensed
 under AGPL-3.0.

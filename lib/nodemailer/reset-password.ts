@@ -41,7 +41,7 @@ export const sendPasswordResetEmail = async (
         `;
 
         const info = await transporter.sendMail({
-            from: `"Tradebook by Nexus" <${process.env.NODEMAILER_EMAIL}>`,
+            from: `"Apex Tradebook" <${process.env.NODEMAILER_EMAIL}>`,
             to: email,
             subject: 'Reset your Tradebook password',
             text: `Reset your password: ${encodeUnsafeUrlChars(resetUrl)}`,
