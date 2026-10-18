@@ -40,6 +40,11 @@ const SignUp = () => {
     const onSubmit = async (data: SignUpFormData) => {
         try {
             const result = await signUpWithEmail(data);
+            if (result.success && result.verify) {
+                toast.success('Check your email', { description: 'Tap the link we sent to confirm your address, then sign in.' });
+                router.push('/sign-in');
+                return;
+            }
             if (result.success) {
                 router.push('/dashboard');
                 return;
@@ -124,6 +129,7 @@ const SignUp = () => {
                     <FooterLink text="Already have an account?" linkText="Sign in" href="/sign-in" />
                 </div>
             </form>
+            <p className="mt-6 text-[12px] text-faint">Apex Tradebook is an educational research tool. Nothing here is investment advice, and it is not a registered dealer or adviser.</p>
         </>
     )
 }

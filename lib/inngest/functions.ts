@@ -36,13 +36,13 @@ export const sendSignUpEmail = inngest.createFunction(
                 const { data: { email, name } } = event;
                 // introText is already a plain string from the AI provider
 
-                console.log(`📧 Attempting to send welcome email to: ${email}`);
+                console.log('📧 Attempting to send welcome email');
                 const result = await sendWelcomeEmail({ email, name, intro: introText });
                 if (result.status !== 'sent') {
-                    console.log(`Welcome email skipped for: ${email}`);
+                    console.log('Welcome email skipped');
                     return result;
                 }
-                console.log(`✅ Welcome email sent successfully to: ${email}`);
+                console.log('✅ Welcome email sent');
                 return result;
             } catch (error) {
                 console.error('❌ Error sending welcome email:', error);
@@ -99,15 +99,6 @@ export const sendWeeklyNewsSummary = inngest.createFunction(
 
                 console.log(`📋 Target Audience: Found ${subData.total_subscribers} total subscribers in Kit.`);
                 console.log(`✅ Confirmed (Active) Subscribers receiving email: ${confirmedCount}`);
-
-                // Log names/emails for the user to see in Inngest dashboard
-                if (subscriberList.length > 0) {
-                    console.log('--- Recipient List ---');
-                    subscriberList.forEach((s: KitSubscriber) => {
-                        console.log(`${s.email_address} (${s.first_name || 'No Name'}) - Status: ${s.state}`);
-                    });
-                    console.log('----------------------');
-                }
             } catch (e) {
                 console.warn("Could not list subscribers for logging:", e);
             }
@@ -494,10 +485,10 @@ export const checkInactiveUsers = inngest.createFunction(
 
                     // CHECK: Is this the test user?
                     if (user.email === '11aravipratapsingh@gmail.com') {
-                        console.log(`🚀 Sending REAL Re-engagement Email to TEST USER: ${user.email}`);
+                        console.log('🚀 Sending re-engagement email');
                         await kit.sendBroadcast(subject, content);
                     } else {
-                        console.log(`[Re-engagement Mock] Would send to ${user.email}`);
+                        console.log('[Re-engagement Mock] Would send');
                     }
 
                     // Update DB to avoid loop
@@ -506,9 +497,9 @@ export const checkInactiveUsers = inngest.createFunction(
                         // @ts-ignore
                         await db.collection('user').updateOne({ _id: new mongoose.Types.ObjectId(user.id) }, { $set: { lastReengagementSentAt: new Date() } });
                     }
-                    sent.push(user.email);
+                    sent.push(user.id);
                 } catch (e) {
-                    console.error("Failed to process user", user.email, e);
+                    console.error("Failed to process user", user.id, e);
                 }
             }
             return sent;
