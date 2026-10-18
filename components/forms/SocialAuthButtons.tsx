@@ -5,7 +5,6 @@ import { Github } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { signInWithSocial } from "@/lib/actions/auth.actions";
-import TelegramLoginButton, { TelegramLoginEnabled } from "@/components/forms/TelegramLoginButton";
 
 const GoogleIcon = () => (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5">
@@ -51,13 +50,11 @@ const SocialAuthButtons = () => {
         setPending(null);
     }
 
-    const telegram = useContext(TelegramLoginEnabled);
-    if (providers.length === 0 && !telegram) return null;
+    if (providers.length === 0) return null;
 
     return (
         <div className="space-y-5 mb-5">
-            <TelegramLoginButton />
-            {providers.length > 0 && <div className={providers.length > 1 ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
+            <div className={providers.length > 1 ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
                 {providers.map(({ id, label, icon }) => (
                     <Button
                         key={id}
@@ -71,7 +68,7 @@ const SocialAuthButtons = () => {
                         {pending === id ? 'Redirecting' : label}
                     </Button>
                 ))}
-            </div>}
+            </div>
             <div className="flex items-center gap-3 text-sm text-gray-500">
                 <span className="h-px flex-1 bg-gray-600" />
                 or

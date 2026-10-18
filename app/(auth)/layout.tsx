@@ -6,8 +6,6 @@ import {redirect} from "next/navigation";
 import {getSession} from "@/lib/better-auth/auth";
 import ProductPreview from "@/components/landing/ProductPreview";
 import { SocialProvidersProvider } from "@/components/forms/SocialAuthButtons";
-import { TelegramLoginEnabled } from "@/components/forms/TelegramLoginButton";
-import { telegramEnabled } from "@/lib/telegram";
 
 const Layout = async ({ children }: { children : React.ReactNode }) => {
 
@@ -28,9 +26,7 @@ const Layout = async ({ children }: { children : React.ReactNode }) => {
                 </Link>
 
                 <div className="pb-6 lg:pb-8 flex-1">
-                    <TelegramLoginEnabled.Provider value={telegramEnabled}>
-                        <SocialProvidersProvider enabled={socialProviders}>{children}</SocialProvidersProvider>
-                    </TelegramLoginEnabled.Provider>
+                    <SocialProvidersProvider enabled={socialProviders}>{children}</SocialProvidersProvider>
                 </div>
             </section>
             <section className="auth-right-section">
