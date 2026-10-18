@@ -1,4 +1,6 @@
-'use server';
+// Server-side Finnhub client. Deliberately NOT a 'use server' module: every export of one of those
+// is a public endpoint anyone can call, and most of these (quotes, profiles, news) take no session.
+// Only searchStocks is reachable from the browser, through lib/actions/search.actions.ts.
 
 import { getDateRange, validateArticle, formatArticle } from '@/lib/utils';
 import { POPULAR_STOCKS } from '@/lib/constants';

@@ -1,6 +1,6 @@
 import PulseTile from "@/components/PulseTile";
 import TradingViewWidget from "@/components/TradingViewWidget";
-import { getLiveQuotes } from "@/lib/actions/finnhub.actions";
+import { getLiveQuotes } from "@/lib/finnhub";
 import { singleQuoteConfig } from "@/lib/constants";
 import { getMarket, type Market } from "@/lib/markets";
 

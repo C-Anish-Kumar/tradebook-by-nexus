@@ -11,7 +11,7 @@ import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { SearchButton } from "@/components/SearchCommand";
 import { formatNumber, formatPrice } from "@/lib/utils";
 import { hasFinnhubQuotes } from "@/lib/markets";
-import type { getWatchlistData } from "@/lib/actions/finnhub.actions";
+import type { getWatchlistData } from "@/lib/finnhub";
 
 type Row = Awaited<ReturnType<typeof getWatchlistData>>[number];
 const SUGGESTIONS = ['AAPL', 'NVDA', 'MSFT', 'TSLA', 'AMZN'];

@@ -3,7 +3,7 @@ import WatchlistButton from "@/components/WatchlistButton";
 import CreateAlertModal from "@/components/watchlist/CreateAlertModal";
 import StockLivePrice from "@/components/stocks/StockLivePrice";
 import { isStockInWatchlist } from "@/lib/actions/watchlist.actions";
-import { getCompanyProfile, getLiveQuotes } from "@/lib/actions/finnhub.actions";
+import { getCompanyProfile, getLiveQuotes } from "@/lib/finnhub";
 import { formatNumber, formatPrice, formatSymbolForTradingView } from "@/lib/utils";
 import { hasFinnhubQuotes } from "@/lib/markets";
 import { symbolInfoConfig } from "@/lib/constants";

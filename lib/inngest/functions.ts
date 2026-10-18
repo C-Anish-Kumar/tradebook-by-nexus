@@ -62,7 +62,7 @@ export const sendWeeklyNewsSummary = inngest.createFunction(
     async ({ step }) => {
         // Step 1: Fetch General Market News
         const articles = await step.run('fetch-general-news', async () => {
-            const { getNews } = await import("@/lib/actions/finnhub.actions");
+            const { getNews } = await import("@/lib/finnhub");
             const news = await getNews();
             // Ideally getNews would accept range, but getting latest 10 is good for summary
             return (news || []).slice(0, 10);
@@ -206,7 +206,17 @@ export const sendWeeklyNewsSummary = inngest.createFunction(
 )
 
 export const checkStockAlerts = inngest.createFunction(
-    { id: 'check-stock-alerts', concurrency: 1, triggers: [{ cron: '*/5 * * * *' }] }, // Every 5 minutes; one run at a time so an alert is never emailed twice
+    {
+        id: 'check-stock-alerts',
+        concurrency: 1, // One run at a time so an alert is never emailed twice
+        // Every 5 minutes while US stocks trade (pre-market to after-hours), every 30 otherwise so
+        // crypto alerts still fire overnight and on weekends without burning ~290 runs a day
+        triggers: [
+            { cron: 'TZ=America/New_York */5 4-19 * * 1-5' },
+            { cron: 'TZ=America/New_York 0,30 0-3,20-23 * * 1-5' },
+            { cron: 'TZ=America/New_York 0,30 * * * 0,6' },
+        ],
+    },
     async ({ step }) => {
         // Step 1: Fetch active alerts
         const activeAlerts = await step.run('fetch-active-alerts', async () => {
@@ -233,7 +243,7 @@ export const checkStockAlerts = inngest.createFunction(
 
         // Step 3: Fetch prices
         const prices = await step.run('fetch-prices', async () => {
-            const { getQuote } = await import("@/lib/actions/finnhub.actions");
+            const { getQuote } = await import("@/lib/finnhub");
             const priceMap: Record<string, number> = {};
 
             // Process in chunks to be safe
