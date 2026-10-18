@@ -50,3 +50,15 @@ def test_short_history_is_rejected():
     px, bench = prices(n=200)
     with pytest.raises(ValueError):
         optimize(px, bench)
+
+
+def test_max_sharpe_survives_a_window_where_every_stock_loses():
+    rng = np.random.default_rng(3)
+    n = 900
+    idx = pd.bdate_range("2020-01-01", periods=n)
+    drift = np.where(np.arange(n)[:, None] > 300, -0.0015, 0.0006) * np.ones((n, 4))
+    px = pd.DataFrame(100 * np.cumprod(1 + rng.normal(drift, 0.015, (n, 4)), axis=0), index=idx, columns=list("ABCD"))
+    bench = pd.Series(100 * np.cumprod(1 + rng.normal(0.0004, 0.01, n)), index=idx)
+    result = optimize(px, bench)
+    weights = next(m for m in result["methods"] if m["key"] == "max_sharpe")["weights"]
+    assert sum(weights.values()) == pytest.approx(1.0, abs=1e-3)
