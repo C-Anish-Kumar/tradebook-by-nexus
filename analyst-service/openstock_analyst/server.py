@@ -268,6 +268,39 @@ def optimize_portfolio(body: PortfolioRequest):
     return result
 
 
+SETUP_TTL_SECONDS = 30 * 60
+setup_cache: dict[tuple, tuple[float, dict]] = {}
+
+
+@app.get("/setups/{ticker}", dependencies=[Depends(require_key)])
+def get_setup(ticker: str, account: float | None = None, risk_pct: float = 1.0, universe: int = 1):
+    """Regime + breakout setup (entry/stop/targets/size) with walk-forward evidence, on daily candles.
+
+    `universe` is how many tickers the caller is scanning, so the Deflated Sharpe prices in the search.
+    The stock-specific validation is cached per last bar; sizing is applied fresh on every call.
+    """
+    from openstock_analyst.setups import MIN_BARS, build_setup
+
+    ticker = ticker.strip().upper()
+    if not TICKER_PATTERN.match(ticker):
+        raise HTTPException(status_code=422, detail="Invalid ticker")
+    universe = max(1, min(universe, 200))
+    risk_pct = max(0.1, min(risk_pct, 5.0))
+    key = (ticker, universe, round(account or 0, 2), risk_pct)
+    cached = setup_cache.get(key)
+    if cached and time.time() - cached[0] < SETUP_TTL_SECONDS:
+        return cached[1]
+
+    import yfinance as yf
+
+    daily = yf.Ticker(ticker).history(period="5y", interval="1d", auto_adjust=False)
+    if len(daily) < MIN_BARS:
+        raise HTTPException(status_code=404, detail="Not enough price history for this ticker")
+    result = {"ticker": ticker, **build_setup(daily, account, risk_pct, universe, key=ticker)}
+    setup_cache[key] = (time.time(), result)
+    return result
+
+
 def main():
     import uvicorn
 

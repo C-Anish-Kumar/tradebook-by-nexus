@@ -1,4 +1,5 @@
 import { cached } from '@/lib/cache';
+import type { Setup } from '@/lib/setups';
 
 // Client for the TradingAgents service in analyst-service/ (hosted outside Vercel: a run takes minutes)
 
@@ -72,6 +73,18 @@ export async function fetchStrategySignals(ticker: string, timeoutMs = 20_000): 
 export async function getStrategySignals(ticker: string): Promise<StrategySignals | null> {
     if (!analystEnabled) return null;
     return cached(`signals:${ticker}`, 15 * 60_000, () => fetchStrategySignals(ticker));
+}
+
+// Regime + breakout setup with its walk-forward evidence. `universe` = how many tickers this scan covers,
+// so the service's Deflated Sharpe prices in the search. Validation is slow on a cold Space: allow a minute.
+export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_000): Promise<Setup> {
+    const res = await fetch(`${SERVICE_URL}/setups/${encodeURIComponent(ticker)}?universe=${universe}`, {
+        headers: serviceHeaders(),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`setups ${res.status}`);
+    return res.json() as Promise<Setup>;
 }
 
 export type BacktestTrade = {

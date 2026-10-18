@@ -18,6 +18,7 @@ const OPTIONS: { key: keyof NotificationPrefs; label: string; detail: string }[]
     { key: 'alerts', label: 'Price alerts', detail: 'The moment one of your alerts triggers' },
     { key: 'daily', label: 'Daily summary', detail: 'Your watchlist after each US market close' },
     { key: 'signals', label: 'Strategy signals', detail: 'When a watched stock turns into an entry, trim or exit' },
+    { key: 'setups', label: 'Breakout setups', detail: 'A fresh regime-gated breakout entry or exit on a watched stock, with its evidence' },
     { key: 'earnings', label: 'Earnings', detail: 'The day before a watched stock reports, then beat or miss' },
 ];
 

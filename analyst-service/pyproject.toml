@@ -13,6 +13,7 @@ dependencies = [
     "edgartools>=5.62",
     "skfolio>=1.8",
     "empyrical-reloaded>=0.5.12",
+    "scipy",
     "fastapi>=0.110",
     "uvicorn>=0.29",
 ]
@@ -20,5 +21,5 @@ dependencies = [
 [project.scripts]
 openstock-analyst = "openstock_analyst.server:main"
 
-[tool.setuptools]
-packages = ["openstock_analyst"]
+[tool.setuptools.packages.find]
+include = ["openstock_analyst*"]

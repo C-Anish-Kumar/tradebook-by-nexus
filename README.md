@@ -14,6 +14,7 @@ Live at **https://open-stock-nexus.vercel.app**
   researchers, a trader and a risk team debate a stock and save a rating plus a full report
 - **Strategy and backtest**: a 10/21 EMA + Supertrend (10,3) checklist on every stock, a replay of it over
   1–10 years, and risk-adjusted scores (Sharpe, Sortino, Calmar, alpha/beta vs SPY)
+- **Setups**: a nightly scan of your watchlist for regime-aware breakout entries with entry, stop, targets and share size, each shown with its walk-forward evidence and a Deflated Sharpe; setups that fail the gates are labelled *Unvalidated*. Optional Telegram message for fresh entries and exits (opt-in)
 - **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
 - **RL Lab**: train a reinforcement-learning trading agent ([Nexus](https://github.com/C-Anish-Kumar/nexus), built on
   FinRL) on a strategy template, compare it with buy-and-hold on data it never saw, and see today's signal
