@@ -1,5 +1,6 @@
-import { cached } from '@/lib/cache';
-import type { Setup } from '@/lib/setups';
+import { cached, readCache } from '@/lib/cache';
+import type { Setup, StoredSetup } from '@/lib/setups';
+import { setupCacheKey, type StrategyId } from '@/lib/strategies';
 
 // Client for the TradingAgents service in analyst-service/ (hosted outside Vercel: a run takes minutes)
 
@@ -16,13 +17,17 @@ export type AnalystJob = {
     error?: string;
 };
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-    if (!analystEnabled) throw new Error('AI Analyst is not configured');
+// One place builds the auth headers for every call to the service
+const serviceHeaders = () => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Analyst-Key': API_KEY! };
     // A private Hugging Face Space also wants a token
     if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
+    return headers;
+};
 
-    const res = await fetch(`${SERVICE_URL}${path}`, { ...init, headers, cache: 'no-store' });
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+    if (!analystEnabled) throw new Error('AI Analyst is not configured');
+    const res = await fetch(`${SERVICE_URL}${path}`, { ...init, headers: serviceHeaders(), cache: 'no-store' });
     if (res.status === 404) throw new AnalystJobMissingError();
     if (!res.ok) throw new Error(`Analyst service ${res.status}: ${(await res.text()).slice(0, 200)}`);
     return res.json() as Promise<T>;
@@ -77,14 +82,25 @@ export async function getStrategySignals(ticker: string): Promise<StrategySignal
 
 // Regime + breakout setup with its walk-forward evidence. `universe` = how many tickers this scan covers,
 // so the service's Deflated Sharpe prices in the search. Validation is slow on a cold Space: allow a minute.
-export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_000): Promise<Setup> {
-    const res = await fetch(`${SERVICE_URL}/setups/${encodeURIComponent(ticker)}?universe=${universe}`, {
+export async function fetchSetup(ticker: string, universe = 1, timeoutMs = 60_000, strategy: StrategyId = 'breakout'): Promise<Setup> {
+    const res = await fetch(`${SERVICE_URL}/setups/${encodeURIComponent(ticker)}?universe=${universe}&strategy=${strategy}`, {
         headers: serviceHeaders(),
         cache: 'no-store',
         signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) throw new Error(`setups ${res.status}`);
     return res.json() as Promise<Setup>;
+}
+
+const SCAN_FRESH_MS = 36 * 3_600_000;
+
+// One strategy's setup for a stock: last night's scan if it is recent (it priced in the whole watchlist's search),
+// otherwise a live single-stock read, shared for 30 minutes. Null while the Space sleeps.
+export async function getSetup(ticker: string, strategy: StrategyId = 'breakout'): Promise<Setup | null> {
+    if (!analystEnabled) return null;
+    const stored = (await readCache<StoredSetup>(setupCacheKey(strategy, ticker)))?.value;
+    if (stored?.setup.quant && Date.now() - Date.parse(stored.scannedAt) < SCAN_FRESH_MS) return stored.setup;
+    return cached<Setup>(`setup-live:${strategy}:${ticker}`, 30 * 60_000, () => fetchSetup(ticker, 1, 60_000, strategy));
 }
 
 export type BacktestTrade = {
@@ -130,12 +146,6 @@ export async function getBacktest(ticker: string, years: number): Promise<Backte
     }, { throwOnMiss: true });
     return result!;
 }
-
-const serviceHeaders = () => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Analyst-Key': API_KEY! };
-    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
-    return headers;
-};
 
 export type FundamentalsLine = { key: string; label: string; values: (number | null)[] };
 export type InsiderTrade = {

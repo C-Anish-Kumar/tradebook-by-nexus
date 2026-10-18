@@ -9,7 +9,10 @@ import { getBotUsername, sendTelegram, telegramEnabled } from '@/lib/telegram';
 import { buildWatchlistSummary, watchlistsFor } from '@/lib/notify';
 
 export type TelegramStatus = { enabled: boolean; connected: boolean; name?: string; prefs: NotificationPrefs };
-const DEFAULT_PREFS: NotificationPrefs = { alerts: true, daily: true, signals: true, earnings: true, setups: false };
+const DEFAULT_PREFS: NotificationPrefs = {
+    alerts: true, daily: true, signals: true, earnings: true,
+    setups: false, maPullback: false, goldenCross: false, breakoutRetest: false, volumeBounce: false,
+};
 const PREF_KEYS = Object.keys(DEFAULT_PREFS) as (keyof NotificationPrefs)[];
 
 // Every action works on the signed-in user's own settings; nothing takes a user id from the client

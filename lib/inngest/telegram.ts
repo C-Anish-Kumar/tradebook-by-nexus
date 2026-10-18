@@ -3,6 +3,7 @@ import { APP_URL } from '@/lib/brand';
 import { readCache, writeCache } from '@/lib/cache';
 import { analystEnabled, fetchStrategySignals } from '@/lib/analyst';
 import { refreshEarningsCalendar, type EarningsCalendar } from '@/lib/market-intel';
+import { STRATEGY_1 } from '@/lib/strategies';
 import { escapeHtml, getBotUsername, setTelegramCommands, setTelegramWebhook, telegramEnabled } from '@/lib/telegram';
 import {
     buildWatchlistSummary, earningsDayLabel, earningsHourLabel, formatUsd, linkedUsers, notify, stockLink, watchlistsFor,
@@ -25,7 +26,7 @@ export const setupTelegramBot = inngest.createFunction(
     },
 );
 
-// After the US close: each linked user's watchlist moves, strategy verdicts and upcoming reports
+// After the US close: each linked user's watchlist moves, trade signals and upcoming reports
 export const sendDailySummaries = inngest.createFunction(
     { id: 'telegram-daily-summary', concurrency: 1, retries: 1, triggers: [{ event: 'app/telegram.daily' }, { cron: 'TZ=America/New_York 25 16 * * 1-5' }] },
     async ({ step }) => step.run('send', async () => {
@@ -45,10 +46,11 @@ export const sendDailySummaries = inngest.createFunction(
 
 type SignalState = { verdict: string; tone: string };
 
-// Daily after the close: re-check each watched stock's strategy and text watchers when the verdict changes
+// Strategy 1 (off by default): re-check each watched stock's checklist and text watchers when the verdict changes
 export const watchStrategySignals = inngest.createFunction(
     { id: 'telegram-strategy-signals', concurrency: 1, retries: 1, triggers: [{ event: 'app/telegram.signals' }, { cron: 'TZ=America/New_York 40 16 * * 1-5' }] },
     async ({ step }) => step.run('check', async () => {
+        if (!STRATEGY_1.enabled) return { skipped: `${STRATEGY_1.label} is switched off in lib/strategies.ts` };
         if (!analystEnabled) return { skipped: 'analyst service not configured' };
         const users = await linkedUsers('signals');
         if (!users.length) return { checked: 0 };
@@ -72,7 +74,7 @@ export const watchStrategySignals = inngest.createFunction(
                         `${icon} <b>${stockLink(symbol)}: ${escapeHtml(s.verdict)}</b>`,
                         `Was: ${escapeHtml(prev.verdict)}`,
                         `Close ${formatUsd(s.close)} · stop ${formatUsd(s.risk.stop)}${s.risk.target_4r ? ` · 4R target ${formatUsd(s.risk.target_4r)}` : ''}`,
-                        `<i>10/21 EMA + Supertrend (10,3), daily candles. Not financial advice.</i>`,
+                        `<i>${STRATEGY_1.label} (${STRATEGY_1.name}), daily candles. Not financial advice.</i>`,
                     ].join('\n'),
                 });
             } catch (error) {

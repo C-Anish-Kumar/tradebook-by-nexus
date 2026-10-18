@@ -6,6 +6,7 @@ import { Check, Loader2, Radar, X } from 'lucide-react';
 import { toast } from 'sonner';
 import Panel from '@/components/Panel';
 import { requestSetupScan, type SetupRow } from '@/lib/actions/setups.actions';
+import { QuantBadge, QuantBreakdown } from '@/components/setups/QuantBadge';
 import { STATUS_LABEL, sizeShares, sortSetups } from '@/lib/setups';
 import { cn } from '@/lib/utils';
 
@@ -65,7 +66,7 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
                     </button>
                 </div>
                 <p className="px-4 pb-4 text-[12px] text-faint">
-                    Scans run automatically after the US close. Every setup carries its walk-forward evidence; one that has not passed every gate is a hypothesis to paper-trade, not an edge.
+                    Scans run automatically after the US close. The quant score rates each setup out of 100 and is capped at 69 until every validation gate passes; an unvalidated setup is a hypothesis to paper-trade, not an edge.
                 </p>
             </Panel>
 
@@ -77,6 +78,7 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
                 <Panel key={symbol}>
                     <div className="flex flex-col gap-3 p-4">
                         <div className="flex flex-wrap items-center gap-2">
+                            {setup?.quant && <QuantBadge quant={setup.quant} className="mr-1" />}
                             <Link href={`/stocks/${encodeURIComponent(symbol)}`} className="num text-[15px] font-semibold hover:underline">{symbol}</Link>
                             {setup ? (
                                 <>
@@ -123,7 +125,9 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
 
                         {setup && (
                             <details className="text-[13px] text-muted-foreground">
-                                <summary className="cursor-pointer font-semibold text-foreground">Evidence</summary>
+                                <summary className="cursor-pointer font-semibold text-foreground">{setup.quant ? 'Score and evidence' : 'Evidence'}</summary>
+                                {setup.quant && <QuantBreakdown quant={setup.quant} />}
+                                <p className="kicker mt-3">Validation gates</p>
                                 <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                                     {Object.entries(setup.evidence.gates).map(([g, ok]) => (
                                         <li key={g} className="flex items-center gap-2">

@@ -5,6 +5,9 @@ import StockHeader, { StockHeaderSkeleton } from "@/components/stocks/StockHeade
 import StockSentimentCard from "@/components/stocks/StockSentimentCard";
 import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import StrategyPanel from "@/components/stocks/StrategyPanel";
+import { scannerStrategies, STRATEGY_1 } from "@/lib/strategies";
+import { STATUS_LABEL } from "@/lib/setups";
+import SetupSummary from "@/components/setups/SetupSummary";
 import BacktestPanel from "@/components/stocks/BacktestPanel";
 import FundamentalsPanel from "@/components/stocks/FundamentalsPanel";
 import Panel from "@/components/Panel";
@@ -16,8 +19,8 @@ import {
 } from "@/lib/constants";
 import { getStockSentimentInsights } from '@/lib/actions/adanos.actions';
 import { getLatestAnalysis } from '@/lib/actions/analysis.actions';
-import { analystEnabled, getFundamentals, getStrategySignals } from '@/lib/analyst';
-import { formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils';
+import { analystEnabled, getFundamentals, getSetup, getStrategySignals } from '@/lib/analyst';
+import { cn, formatSymbolForTradingView, isChartEmbeddable, tradingViewSymbolUrl } from '@/lib/utils';
 
 const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
 
@@ -41,13 +44,52 @@ async function AIAnalyst({ symbol }: { symbol: string }) {
     );
 }
 
+async function Setups({ symbol }: { symbol: string }) {
+    const strategies = scannerStrategies();
+    if (!analystEnabled || !strategies.length || symbol.includes(':')) return null;
+    // Last night's scan where there is one; otherwise a live read, shared for 30 minutes
+    const rows = await Promise.all(strategies.map(async (strategy) => ({ strategy, setup: await getSetup(symbol, strategy.id) })));
+    return (
+        <Panel title="Trade setups" sub="Every strategy that is switched on, each with a 0-100 quant score">
+            {rows.every((r) => !r.setup) ? (
+                <div className="empty-state py-10">
+                    <h3>Waking up the analyst service</h3>
+                    <p className="max-w-80 text-[13px]">The scores for {symbol} will be ready in about a minute. Refresh then.</p>
+                </div>
+            ) : (
+                <div className="flex flex-col divide-y divide-line">
+                    {rows.map(({ strategy, setup }, i) => (
+                        <details key={strategy.id} open={i === 0} className="group">
+                            <summary className="flex cursor-pointer flex-wrap items-center gap-2 px-4 py-3 text-[13px]">
+                                <span className="font-semibold text-foreground">{strategy.label}: {strategy.name}</span>
+                                {setup ? (
+                                    <>
+                                        <span className={cn('pill', setup.status === 'entry' && 'is-up', setup.status === 'watch' && 'is-brand')}>{STATUS_LABEL[setup.status]}</span>
+                                        {setup.quant && <span className="pill num">{setup.quant.score}/100 · {setup.quant.label}</span>}
+                                    </>
+                                ) : <span className="text-faint">Not available yet</span>}
+                            </summary>
+                            {setup && (
+                                <>
+                                    <p className="px-4 text-[12px] text-faint">{strategy.rules}</p>
+                                    <SetupSummary setup={setup} />
+                                </>
+                            )}
+                        </details>
+                    ))}
+                </div>
+            )}
+        </Panel>
+    );
+}
+
 async function Strategy({ symbol }: { symbol: string }) {
-    if (!analystEnabled || symbol.includes(':')) return null;
+    if (!analystEnabled || !STRATEGY_1.enabled || symbol.includes(':')) return null;
     const signals = await getStrategySignals(symbol);
     if (!signals) {
         // First visit while the Space sleeps: say so instead of silently dropping the panels
         return (
-            <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+            <Panel title={STRATEGY_1.label} sub={`${STRATEGY_1.name}: ${STRATEGY_1.rules}`}>
                 <div className="empty-state py-10">
                     <h3>Waking up the analyst service</h3>
                     <p className="max-w-80 text-[13px]">The strategy checklist, backtest and fundamentals for {symbol} will be ready in about a minute. Refresh then.</p>
@@ -57,7 +99,7 @@ async function Strategy({ symbol }: { symbol: string }) {
     }
     return (
         <>
-            <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+            <Panel title={STRATEGY_1.label} sub={`${STRATEGY_1.name}: ${STRATEGY_1.rules}`}>
                 <StrategyPanel signals={signals} />
             </Panel>
             <Panel title="Backtest" sub="How these rules would have traded this stock">
@@ -116,6 +158,9 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
                             </div>
                         </Panel>
                     )}
+                    <Suspense fallback={null}>
+                        <Setups symbol={symbol} />
+                    </Suspense>
                     <Suspense fallback={null}>
                         <Strategy symbol={symbol} />
                     </Suspense>

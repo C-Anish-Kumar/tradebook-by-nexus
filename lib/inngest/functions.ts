@@ -56,7 +56,6 @@ export const sendSignUpEmail = inngest.createFunction(
     }
 )
 
-// Rename to Weekly
 export const sendWeeklyNewsSummary = inngest.createFunction(
     { id: 'weekly-news-summary', triggers: [{ event: 'app/send.weekly.news' }, { cron: '0 9 * * 1' }] }, // Every Monday at 9AM
     async ({ step }) => {

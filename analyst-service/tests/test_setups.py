@@ -61,3 +61,93 @@ def test_position_size_respects_risk():
 def test_too_little_history_is_rejected(trending):
     with pytest.raises(ValueError):
         build_setup(trending.iloc[:100])
+
+
+def test_quant_score_shape_and_bounds(trending):
+    q = build_setup(trending, account=1000)["quant"]
+    assert 0 <= q["score"] <= 100
+    assert q["label"] in {"Strong", "Good", "Fair", "Weak", "Poor"}
+    assert [c["key"] for c in q["components"]] == ["evidence", "regime", "readiness", "volume", "risk"]
+    assert sum(c["max"] for c in q["components"]) == 100
+    assert all(0 <= c["points"] <= c["max"] for c in q["components"])
+
+
+def test_unvalidated_setups_cannot_score_above_the_cap():
+    from openstock_analyst.quant_score import UNVALIDATED_CAP, score_setup
+
+    perfect = {
+        "status": "entry", "params": {"adx_min": 22.0},
+        "regime": {"trend": "up", "vol": "low", "adx": 40.0},
+        "plan": {"risk_pct_of_price": 2.0},
+        "evidence": {"validated": False, "oos_sharpe": 2.0, "gates": {g: True for g in "abcdef"}},
+    }
+    q = score_setup(perfect, rel_volume=2.0)
+    assert q["score"] == UNVALIDATED_CAP and q["capped"] is True
+    perfect["evidence"]["validated"] = True
+    assert score_setup(perfect, rel_volume=2.0)["score"] == 100
+
+
+def test_quant_score_rewards_the_right_things():
+    from openstock_analyst.quant_score import score_setup
+
+    base = {
+        "status": "none", "params": {"adx_min": 22.0},
+        "regime": {"trend": "down", "vol": "high", "adx": 10.0},
+        "evidence": {"validated": False, "oos_sharpe": None, "gates": {"a": False, "b": False}},
+    }
+    low = score_setup(base, rel_volume=None, stop_pct_estimate=12.0)["score"]
+    base["status"] = "entry"
+    base["plan"] = {"risk_pct_of_price": 3.0}
+    high = score_setup(base, rel_volume=1.8)["score"]
+    assert low == 0 and high > low
+
+
+def test_relative_volume_uses_prior_bars_only():
+    from openstock_analyst.setups import relative_volume
+
+    df = pd.DataFrame({"volume": [100.0] * 25 + [300.0]})
+    assert relative_volume(df) == pytest.approx(3.0)
+    assert relative_volume(df.iloc[:10]) is None
+
+
+ALL_STRATEGIES = ["breakout", "ma_pullback", "golden_cross", "breakout_retest", "volume_bounce"]
+
+
+@pytest.mark.parametrize("strategy", ALL_STRATEGIES)
+def test_every_strategy_builds_a_scored_setup(trending, strategy):
+    s = build_setup(trending, account=1000, strategy=strategy)
+    assert s["strategy"] == strategy
+    assert s["status"] in {"entry", "holding", "watch", "none"}
+    assert 0 <= s["quant"]["score"] <= 100
+    if "plan" in s:
+        assert s["plan"]["stop"] < s["plan"]["entry"] and s["plan"]["exit_rule"]
+
+
+@pytest.mark.parametrize("strategy", ["ma_pullback", "golden_cross", "breakout_retest", "volume_bounce"])
+def test_playbook_strategies_never_peek_at_the_future(trending, strategy):
+    from openstock_analyst.setups import SPECS
+
+    df = normalise(trending)
+    strat = SPECS[strategy].cls(**{k: v[0] for k, v in SPECS[strategy].grid.items()})
+    full = strat.positions(df)
+    for cut in (450, 600, 800):
+        assert np.allclose(full.iloc[:cut].values, strat.positions(df.iloc[:cut]).values)
+
+
+def test_playbook_strategies_trade_on_some_data():
+    """Guards against a rule that can never fire: across a few seeds each strategy enters at least once."""
+    from openstock_analyst.setups import SPECS
+
+    for strategy in ["ma_pullback", "breakout_retest", "volume_bounce"]:
+        spec = SPECS[strategy]
+        entries = 0
+        for seed in range(1, 8):
+            df = normalise(yahoo_like(make_ohlcv(900, seed=seed, freq="D")))
+            pos = spec.cls(**{k: v[0] for k, v in spec.grid.items()}).positions(df)
+            entries += int((pos.diff().fillna(0) > 0).sum())
+        assert entries > 0, strategy
+
+
+def test_unknown_strategy_is_rejected(trending):
+    with pytest.raises(KeyError):
+        build_setup(trending, strategy="nope")

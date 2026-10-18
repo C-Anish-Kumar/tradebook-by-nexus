@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, BrainCircuit, Code2, Crosshair, Info, LayoutDashboard, LifeBuoy, LogOut, Scale, Search, Star } from "lucide-react";
+import { BookOpen, BrainCircuit, Code2, Crosshair, Info, LayoutDashboard, LifeBuoy, LogOut, MessageSquare, Scale, Search, Star } from "lucide-react";
 import { openSearch } from "@/components/SearchCommand";
 import { signOut } from "@/lib/actions/auth.actions";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,9 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
                 </Link>
                 <Link href="/setups" className={cn('side-item', pathname === '/setups' && 'is-active')}>
                     <Crosshair /> Setups
+                </Link>
+                <Link href="/chat" className={cn('side-item', pathname === '/chat' && 'is-active')}>
+                    <MessageSquare /> Ask
                 </Link>
                 <Link href="/portfolio" className={cn('side-item', pathname === '/portfolio' && 'is-active')}>
                     <Scale /> Portfolio Lab

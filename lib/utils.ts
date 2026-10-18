@@ -5,26 +5,6 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-export const formatTimeAgo = (timestamp: number) => {
-    const now = Date.now();
-    const diffInMs = now - timestamp * 1000; // Convert to milliseconds
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-
-    if (diffInHours > 24) {
-        const days = Math.floor(diffInHours / 24);
-        return `${days} day${days > 1 ? 's' : ''} ago`;
-    } else if (diffInHours >= 1) {
-        return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    } else {
-        return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
-    }
-};
-
-export function delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 // Formatted string like "$3.10T", "$900.00B", "$25.00M" or "$999999.99"
 export function formatMarketCapValue(marketCapUsd: number): string {
     if (!Number.isFinite(marketCapUsd) || marketCapUsd <= 0) return 'N/A';
@@ -42,16 +22,6 @@ export const getDateRange = (days: number) => {
     return {
         to: toDate.toISOString().split('T')[0],
         from: fromDate.toISOString().split('T')[0],
-    };
-};
-
-// Get today's date range (from today to today)
-export const getTodayDateRange = () => {
-    const today = new Date();
-    const todayString = today.toISOString().split('T')[0];
-    return {
-        to: todayString,
-        from: todayString,
     };
 };
 
@@ -75,9 +45,6 @@ export const calculateNewsDistribution = (symbolsCount: number) => {
 // Check for required article fields
 export const validateArticle = (article: RawNewsArticle) =>
     article.headline && article.summary && article.url && article.datetime;
-
-// Get today's date string in YYYY-MM-DD format
-export const getTodayString = () => new Date().toISOString().split('T')[0];
 
 export const formatArticle = (
     article: RawNewsArticle,
@@ -116,9 +83,6 @@ export const formatPrice = (price: number, currency = 'USD') => {
     }).format(price);
 };
 
-// Alias for consistency
-export const formatCurrency = formatPrice;
-
 export function formatNumber(num?: number | null): string {
     // Guard against missing/invalid market caps (Finnhub omits this field for many
     // symbols, e.g. ETFs). Without this, `num * 1e6` yields NaN and renders "NaN".
@@ -135,20 +99,6 @@ export function formatNumber(num?: number | null): string {
     if (value >= 1e3) return (value / 1e3).toFixed(2) + 'K';
     return value.toString();
 }
-
-export const formatDateToday = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: 'UTC',
-});
-
-
-export const getAlertText = (alert: Alert) => {
-    const condition = alert.alertType === 'upper' ? '>' : '<';
-    return `Price ${condition} ${formatPrice(alert.threshold)}`;
-};
 
 export const getFormattedTodayDate = () => new Date().toLocaleDateString('en-US', {
     weekday: 'long',

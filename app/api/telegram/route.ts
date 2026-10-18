@@ -3,13 +3,14 @@ import { NotificationSettings } from '@/database/models/notification.model';
 import { buildWatchlistSummary, watchlistsFor } from '@/lib/notify';
 import { escapeHtml, sendTelegram, WEBHOOK_SECRET } from '@/lib/telegram';
 import { APP_URL, BRAND_FULL } from '@/lib/brand';
+import { enabledStrategies } from '@/lib/strategies';
 
 type Update = { message?: { text?: string; chat?: { id: number; first_name?: string; username?: string } } };
 
 const HELP = `I send updates for the stocks on your ${BRAND_FULL} watchlist:
 • your price alerts the moment they trigger
 • a summary after each US market close
-• strategy signal changes (entry, trim, exit)
+• trade signals with a 0-100 quant score (${enabledStrategies().map((s) => s.name).join(', ')}), if you switch them on
 • earnings reminders and beat/miss results
 
 /summary — your watchlist right now

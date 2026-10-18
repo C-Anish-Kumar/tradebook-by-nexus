@@ -4,7 +4,7 @@
 //   realtime           with your own Finnhub keys: quotes refresh every 15s.
 export type DataMode = 'cached' | 'realtime';
 
-export const DATA_MODE: DataMode = process.env.NEXT_PUBLIC_OPENSTOCK_DATA_MODE === 'realtime' ? 'realtime' : 'cached';
+const DATA_MODE: DataMode = process.env.NEXT_PUBLIC_OPENSTOCK_DATA_MODE === 'realtime' ? 'realtime' : 'cached';
 
 export const QUOTE_TTL_SECONDS = DATA_MODE === 'realtime' ? 15 : 3600;
 

@@ -1,7 +1,6 @@
 import nodemailer from 'nodemailer';
 import {
     WELCOME_EMAIL_TEMPLATE,
-    NEWS_SUMMARY_EMAIL_TEMPLATE,
     STOCK_ALERT_UPPER_EMAIL_TEMPLATE,
     STOCK_ALERT_LOWER_EMAIL_TEMPLATE,
 } from "@/lib/nodemailer/templates";
@@ -68,36 +67,6 @@ export const sendWelcomeEmail = async ({ email, name, intro }: WelcomeEmailData)
         throw error;
     }
 }
-
-export const sendNewsSummaryEmail = async (
-    { email, date, newsContent }: { email: string; date: string; newsContent: string }
-) => {
-    try {
-        if (!transporter) {
-            console.warn('⚠️ News summary email skipped: email credentials are not configured.');
-            return { status: 'skipped' } satisfies EmailSendResult;
-        }
-
-        const htmlTemplate = NEWS_SUMMARY_EMAIL_TEMPLATE
-            .replace('{{date}}', date)
-            .replace('{{newsContent}}', newsContent);
-
-        const mailOptions = {
-            from: `"Tradebook by Nexus" <${process.env.NODEMAILER_EMAIL}>`,
-            to: email,
-            subject: `📈 Market News Summary Today - ${date}`,
-            text: `Today's market news summary from Tradebook`,
-            html: htmlTemplate,
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-        console.log('✅ News summary email sent successfully:', info.messageId);
-        return { status: 'sent', messageId: info.messageId } satisfies EmailSendResult;
-    } catch (error) {
-        console.error('❌ Failed to send news summary email:', error);
-        throw error;
-    }
-};
 
 export const sendStockAlertEmail = async (
     { email, symbol, currentPrice, targetPrice, condition }:

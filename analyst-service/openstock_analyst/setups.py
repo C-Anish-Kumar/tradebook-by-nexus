@@ -12,7 +12,10 @@ an unvalidated setup is a hypothesis to paper-trade, not a signal.
 
 from __future__ import annotations
 
+import itertools
 import math
+from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -20,16 +23,56 @@ import pandas as pd
 from openstock_analyst.aqp.backtest.engine import Costs, backtest, sharpe
 from openstock_analyst.aqp.features.price_action import swing_levels
 from openstock_analyst.aqp.regime.detector import atr, detect_regimes
+from openstock_analyst.aqp.strategies.playbook import PLAYBOOK
 from openstock_analyst.aqp.strategies.rules import BreakoutATR
 from openstock_analyst.aqp.validation.gates import run_gates
 from openstock_analyst.aqp.validation.ledger import TrialLedger
+from openstock_analyst.quant_score import score_setup
 
 DAILY_PPY = 252
 MIN_BARS = 400
+VOLUME_WINDOW = 20
 # Small on purpose: every extra setting is another chance to fool ourselves, and all are counted.
 PARAM_GRID = {"swing_n": [3, 5, 8], "adx_min": [15.0, 22.0], "trail_atr": [2.0, 3.0, 4.0]}
 WATCH_DISTANCE_ATR = 1.0   # within 1 ATR below the swing high counts as "watching a breakout"
 COSTS = Costs(fee_bps=2.0, slippage_bps=8.0)  # 10 bps a side: liquid US stocks, small orders
+
+
+@dataclass(frozen=True)
+class Spec:
+    """One strategy the scan can run: its class, the small grid searched, and how to read its latest bar."""
+    id: str
+    cls: type
+    grid: dict
+    volume_rule: str          # 'high': the entry bar wants heavy volume; 'low': it wants a quiet pullback
+    trend_following: bool     # warn when ADX says the market is ranging
+    exit_rule: Callable[[dict], str]
+
+
+def _trail(p: dict) -> str:
+    return f"highest close since entry minus {p['trail_atr']} x ATR(14)"
+
+
+def _playbook_spec(sid: str, grid: dict, volume_rule: str, trend_following: bool, exit_text: Callable[[dict], str]) -> Spec:
+    return Spec(sid, PLAYBOOK[sid], grid, volume_rule, trend_following, exit_text)
+
+
+SPECS: dict[str, Spec] = {
+    "breakout": Spec("breakout", BreakoutATR, PARAM_GRID, "high", True,
+                     lambda p: f"close below {_trail(p)}"),
+    "ma_pullback": _playbook_spec(
+        "ma_pullback", {"tol_atr": [0.5, 1.0], "trail_atr": [2.5, 3.5]}, "low", True,
+        lambda p: f"close below the 20 MA minus 0.5 x ATR, or below {_trail(p)}"),
+    "golden_cross": _playbook_spec(
+        "golden_cross", {"tol_atr": [0.75, 1.5], "trail_atr": [3.0, 4.0]}, "low", True,
+        lambda p: f"close below the 50 MA, or below {_trail(p)}"),
+    "breakout_retest": _playbook_spec(
+        "breakout_retest", {"swing_n": [5, 8], "vol_mult": [1.2, 1.5], "trail_atr": [2.5, 3.5]}, "low", True,
+        lambda p: f"close back across the retested level minus 0.5 x ATR, or below {_trail(p)}"),
+    "volume_bounce": _playbook_spec(
+        "volume_bounce", {"vol_mult": [1.5, 2.0], "support_n": [20, 50], "trail_atr": [2.5, 3.5]}, "high", False,
+        lambda p: f"close below the signal candle's low, or below {_trail(p)}"),
+}
 
 
 def normalise(daily: pd.DataFrame) -> pd.DataFrame:
@@ -47,12 +90,13 @@ def _num(x, digits: int = 4):
     return round(x, digits) if math.isfinite(x) else None
 
 
-def evidence(df: pd.DataFrame, universe: int = 1) -> dict:
-    """Run the validation gates for this ticker. `universe` = how many tickers the same hunt covers."""
+def evidence(df: pd.DataFrame, universe: int = 1, spec: Spec | None = None) -> dict:
+    """Run the validation gates for this ticker. `universe` = how many ticker/strategy pairs the same hunt covers."""
+    spec = spec or SPECS["breakout"]
     ledger = TrialLedger()
     rep = run_gates(
-        df, BreakoutATR, PARAM_GRID, ledger, costs=COSTS, n_splits=4, min_trades=15,
-        ppy=DAILY_PPY, purge=10, embargo=5, extra_trials=max(0, universe - 1) * len(_grid()),
+        df, spec.cls, spec.grid, ledger, costs=COSTS, n_splits=4, min_trades=15,
+        ppy=DAILY_PPY, purge=10, embargo=5, extra_trials=max(0, universe - 1) * len(_grid(spec.grid)),
     )
     g = rep["gates"]
     return {
@@ -67,9 +111,9 @@ def evidence(df: pd.DataFrame, universe: int = 1) -> dict:
     }
 
 
-def _grid() -> list[dict]:
-    import itertools
-    return [dict(zip(PARAM_GRID, v)) for v in itertools.product(*PARAM_GRID.values())]
+def _grid(grid: dict | None = None) -> list[dict]:
+    grid = grid or PARAM_GRID
+    return [dict(zip(grid, v)) for v in itertools.product(*grid.values())]
 
 
 def live_state(df: pd.DataFrame, params: dict) -> dict:
@@ -98,6 +142,15 @@ def live_state(df: pd.DataFrame, params: dict) -> dict:
     return {"status": "none", "entry": None, "stop": None, "bars_in_trade": 0, "trigger": _num(level, 2)}
 
 
+def relative_volume(df: pd.DataFrame, window: int = VOLUME_WINDOW) -> float | None:
+    """Latest bar's volume as a multiple of the previous `window` bars' average (None if there is no volume data)."""
+    if len(df) <= window:
+        return None
+    avg = float(df.volume.iloc[-window - 1:-1].mean())
+    last = float(df.volume.iloc[-1])
+    return last / avg if avg > 0 and math.isfinite(last) else None
+
+
 def size_position(entry: float, stop: float, account: float | None, risk_pct: float = 1.0) -> dict | None:
     """Whole shares that risk `risk_pct`% of the account if the stop is hit. None if inputs don't allow it."""
     if not account or account <= 0 or entry is None or stop is None or entry <= stop:
@@ -112,26 +165,28 @@ _EVIDENCE_CACHE: dict[tuple, dict] = {}
 
 
 def build_setup(daily: pd.DataFrame, account: float | None = None, risk_pct: float = 1.0, universe: int = 1,
-                key: str | None = None) -> dict:
+                key: str | None = None, strategy: str = "breakout") -> dict:
     """`key` (the ticker) lets the heavy validation be reused for the same last bar."""
+    spec = SPECS[strategy]
     df = normalise(daily)
     if len(df) < MIN_BARS:
         raise ValueError(f"Need at least {MIN_BARS} daily bars, got {len(df)}")
 
     reg = detect_regimes(df).iloc[-1]
-    ck = (key, df.index[-1], universe) if key else None
+    ck = (key, strategy, df.index[-1], universe) if key else None
     if ck and ck in _EVIDENCE_CACHE:
         ev = _EVIDENCE_CACHE[ck]
     else:
-        ev = evidence(df, universe)
+        ev = evidence(df, universe, spec)
         if ck:
             if len(_EVIDENCE_CACHE) > 500:
                 _EVIDENCE_CACHE.clear()
             _EVIDENCE_CACHE[ck] = ev
-    params = ev["params"] or {k: v[0] for k, v in PARAM_GRID.items()}
-    st = live_state(df, params)
+    params = ev["params"] or {k: v[0] for k, v in spec.grid.items()}
+    st = live_state(df, params) if strategy == "breakout" else spec.cls(**params).live(df)
 
     out = {
+        "strategy": strategy,
         "date": df.index[-1].date().isoformat(),
         "close": _num(df.close.iloc[-1], 2),
         "regime": {"trend": None if pd.isna(reg.trend) else str(reg.trend), "vol": None if pd.isna(reg.vol) else str(reg.vol),
@@ -148,23 +203,30 @@ def build_setup(daily: pd.DataFrame, account: float | None = None, risk_pct: flo
             "risk_pct_of_price": _num(r / st["entry"] * 100, 2),
             "target_2r": _num(st["entry"] + 2 * r, 2), "target_3r": _num(st["entry"] + 3 * r, 2),
             "bars_in_trade": st["bars_in_trade"],
-            "exit_rule": f"close below highest close since entry minus {params['trail_atr']} x ATR(14)",
+            "exit_rule": spec.exit_rule({**getattr(spec.cls, "defaults", {}), **params}),
         }
         out["size"] = size_position(st["entry"], st["stop"], account, risk_pct)
-    out["warnings"] = _warnings(out)
+    rel_vol = relative_volume(df)
+    out["volume"] = {"relative": _num(rel_vol, 2)}
+    stop_pct = (params["trail_atr"] * float(atr(df, 14).iloc[-1]) / float(df.close.iloc[-1])) * 100
+    out["quant"] = score_setup(out, rel_vol, stop_pct, spec.volume_rule)
+    out["warnings"] = _warnings(out, spec)
     return out
 
 
-def _warnings(s: dict) -> list[str]:
+def _warnings(s: dict, spec: Spec | None = None) -> list[str]:
+    spec = spec or SPECS["breakout"]
     w = []
     ev = s["evidence"]
     if not ev["validated"]:
         failed = [k for k, ok in ev["gates"].items() if not ok]
         w.append("Unvalidated: failed " + ", ".join(failed) + ". Paper-trade it; do not size it like an edge.")
-    if s["regime"]["trend"] == "range" and s["status"] in ("entry", "watch"):
-        w.append("Breakouts fail more often in a range regime (ADX is low).")
+    if spec.trend_following and s["regime"]["trend"] == "range" and s["status"] in ("entry", "watch"):
+        w.append("This strategy follows trends, and ADX says the market is ranging, so it fails more often.")
     if s["regime"]["vol"] == "high":
         w.append("Volatility is in its top band: stops are wide, so size shrinks.")
     if ev["trades"] is not None and ev["trades"] < 15:
         w.append("Few historical trades: the evidence is thin.")
+    if s["quant"]["capped"]:
+        w.append("Quant score is capped at 69 until every validation gate passes.")
     return w

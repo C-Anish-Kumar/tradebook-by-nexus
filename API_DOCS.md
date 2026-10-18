@@ -1,112 +1,77 @@
-<div align="center">
-  <img src="public/assets/images/logo.png" alt="OpenStock Logo" width="120" />
-  <h1>OpenStock API & Architecture</h1>
-  
-  <p>
-    <b>Modern. Open. Resilient.</b>
-  </p>
+# Tradebook by Nexus: background jobs and integrations
 
-  <p>
-    <img src="https://img.shields.io/badge/status-active-success?style=for-the-badge" alt="Status" />
-    <img src="https://img.shields.io/badge/AI-Gemini%20%2B%20Siray-blueviolet?style=for-the-badge" alt="AI Stack" />
-    <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=for-the-badge" alt="License" />
-  </p>
-</div>
+How the app runs behind the scenes. For setup and environment variables see the [README](README.md); the
+analyst service has its own guide in [`analyst-service/README.md`](analyst-service/README.md).
 
----
+## Architecture
 
-## 🏗️ Architecture Overview
-
-OpenStock leverages a resilient event-driven architecture powered by **Inngest**. We prioritize uptime for our generative features by utilizing a multi-provider AI strategy.
-
-### 🧠 Intelligent Model Routing
-
-We don't rely on a single point of failure. Our AI infrastructure automatically routes around outages.
+The web app (Next.js on Vercel) does the request/response work. Anything slow or scheduled runs as an
+**Inngest** function, defined in `lib/inngest/` and registered in `app/api/inngest/route.ts`. Heavy analysis
+runs on a separate Hugging Face Space (`analyst-service/`), which Inngest keeps awake.
 
 ```mermaid
 graph LR
-    A[User Action / Cron] -->|Trigger| B(Inngest Function);
-    B --> C{Primary Provider};
-    C -->|Gemini 2.5 Flash Lite| D[Generate Content];
-    C -.->|Error / Rate Limit| E{Fallback Provider};
-    E -->|Siray.ai Ultra| D;
-    D --> F[Email / Notification];
-    
-    style C fill:#20c997,stroke:#333,stroke-width:2px,color:black
-    style E fill:#3b82f6,stroke:#333,stroke-width:2px,color:white
-    style D fill:#fff,stroke:#333,stroke-width:2px,color:black
+    A[Page / cron / event] --> B(Inngest function)
+    B --> C[Finnhub, FRED, Kit, Telegram]
+    B --> D[Analyst Space: /signals /backtest /setups /analyses]
+    B --> E[(MongoDB cache + results)]
+    B --> F[AI provider]
+    F -->|primary| G[Gemini]
+    F -.->|error or rate limit| H[MiniMax, then Siray]
 ```
 
----
+## Inngest functions
 
-## 🤝 AI Partners
+Times are in US Eastern where a time zone is shown, otherwise UTC.
 
-### Primary: Google Gemini
-The workhorse of our generative content. Fast, efficient, and deeply integrated via Inngest.
+| ID | Trigger | What it does |
+|---|---|---|
+| `sign-up-email` | event `app/user.created` | AI-written welcome email |
+| `weekly-news-summary` | Mon 09:00 UTC, event `app/send.weekly.news` | Summarises top news and sends it as a Kit broadcast |
+| `check-stock-alerts` | every 5 min 4 AM–8 PM ET weekdays; every 30 min otherwise (realtime mode only) | Checks price alerts against live quotes and emails the owner |
+| `check-inactive-users` | daily 10:00 UTC | Sends a re-engagement email through Kit to users inactive for 30+ days (50 per run, at most one a month each) |
+| `keep-analyst-awake` | every 15 min | Pings the analyst and Nexus Spaces so the free tier does not sleep |
+| `refresh-market-data` | hourly, event `app/market.refresh` | Earnings calendar, macro snapshot, market data cache |
+| `write-market-brief` | 8:50, 12:50, 16:50 ET weekdays, event `app/market.brief` | AI market brief |
+| `run-ai-analysis` | event `app/analysis.requested` | One TradingAgents analysis on the analyst Space |
+| `run-rl-job` | event `app/rl.requested` | One RL Lab training or scoring job on the Nexus Space |
+| `scan-setups` | 16:55 ET weekdays, event `app/setups.scan` | **Strategies 2-6**: scans every watchlisted symbol under every enabled strategy, one step per symbol and strategy, stores the setup with its 0-100 quant score, and messages opted-in users on entries and exits |
+| `telegram-setup` | event `app/telegram.setup` | Registers the Telegram webhook and commands (run once) |
+| `telegram-daily-summary` | 16:25 ET weekdays | Watchlist summary |
+| `telegram-strategy-signals` | 16:40 ET weekdays | **Strategy 1** (off by default, see `lib/strategies.ts`): messages users when a stock's verdict changes |
+| `telegram-earnings` | 8:45 and 17:45 ET weekdays | Earnings reminders and results |
 
-### Fallback: Siray.ai
-> [!IMPORTANT]
-> **Zero Downtime Guarantee.**
-> When Gemini wavers, **Siray.ai** takes over instantly. No user request is ever dropped.
+Run any of them by hand from the Inngest dashboard (**Functions > Invoke**) with `{ "data": {} }`.
 
-<div align="center">
-  <br/>
-  <a href="https://www.siray.ai/">
-    <img src="public/assets/icons/siray.svg" alt="Siray.ai Logo" width="180" />
-  </a>
-  <p><i>The robust infrastructure backing OpenStock.</i></p>
-</div>
+## Analyst service routes
 
----
+All routes except `/` need the `X-Analyst-Key` header.
 
-## ⚡ Serverless Functions (Inngest)
+| Route | Strategy | Purpose |
+|---|---|---|
+| `GET /signals/{ticker}` | Strategy 1 | 10/21 EMA + Supertrend checklist, cached 15 minutes |
+| `GET /backtest/{ticker}?years=` | Strategy 1 | Replay of the strategy with risk-adjusted scores |
+| `GET /setups/{ticker}?strategy=&account=&risk_pct=&universe=` | Strategies 2-6 (`strategy` = `breakout`, `ma_pullback`, `golden_cross`, `breakout_retest`, `volume_bounce`) | Regime-aware breakout state, plan, walk-forward evidence and the 0-100 `quant` score with its breakdown, cached 30 minutes |
+| `GET /fundamentals/{ticker}` | | SEC 10-K figures, insider trades, filings |
+| `POST /portfolio/optimize` | | Portfolio Lab allocations |
+| `POST /analyses`, `GET /analyses/{id}` | | AI Analyst jobs |
 
-Our background jobs are defined in `lib/inngest/functions.ts`.
+## AI providers
 
-| ID | Type | Schedule/Trigger | Purpose |
-| :--- | :--- | :--- | :--- |
-| `sign-up-email` | 🔔 Event | `app/user.created` | **Personalized Onboarding.** Generates a custom welcome message based on user quiz results. |
-| `weekly-news-summary` | ⏱️ Cron | `0 9 * * 1` (Mon 9AM) | **Market Intelligence.** Summarizes top financial news and broadcasts to all users via Kit. |
-| `check-stock-alerts` | ⏱️ Cron | `*/5 * * * *` | **Real-time Monitoring.** Checks user price targets against live market data. |
-| `check-inactive-users` | ⏱️ Cron | `0 10 * * *` | **Re-engagement.** Identifies dormant users (>30 days) and sends a "We miss you" nudge. |
+`lib/ai-provider.ts` picks the provider from `AI_PROVIDER` (default Gemini). If it fails, the next one is tried:
+Gemini falls back to MiniMax (when `MINIMAX_API_KEY` is set) or Siray. If a Gemini model id is retired, older
+ids are tried before giving up.
 
----
+## Integrations
 
-## 🔌 API Integrations
+| Service | Used for | Variables |
+|---|---|---|
+| [Finnhub](https://finnhub.io) | quotes, profiles, news, search | `FINNHUB_API_KEYS` |
+| [FRED](https://fred.stlouisfed.org) | economic calendar, yield curve | `FRED_API_KEY` |
+| [Kit](https://kit.com) | weekly news broadcast, welcome subscription | `KIT_API_KEY`, `KIT_API_SECRET`, `KIT_WELCOME_FORM_ID` |
+| Gmail (Nodemailer) | welcome, price-alert and password-reset emails | `NODEMAILER_EMAIL`, `NODEMAILER_PASSWORD` |
+| Telegram Bot API | alerts, summaries, strategy messages | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` |
+| MongoDB Atlas | users, watchlists, alerts, analyses, cache | `MONGODB_URI` |
 
-<details>
-<summary><b>📈 Stock Data: Finnhub</b></summary>
-<br/>
-
-*   **Base URL:** `https://finnhub.io/api/v1`
-*   **Key Features:** Real-time quotes, technical indicators, market news.
-*   **Auth:** `NEXT_PUBLIC_FINNHUB_API_KEY`
-
-</details>
-
-<details>
-<summary><b>📧 Email & Marketing: Kit (ConvertKit)</b></summary>
-<br/>
-
-*   **Role:** High-volume user broadcasts and tag management.
-*   **Key Endpoints:**
-    *   `POST /v3/tags/{tag_id}/subscribe` (User Migration)
-    *   `POST /v3/broadcasts` (Newsletters)
-*   **Auth:** `KIT_API_KEY` • `KIT_API_SECRET`
-
-</details>
-
-<details>
-<summary><b>🗄️ Database: MongoDB Atlas</b></summary>
-<br/>
-
-*   **Connection:** Standard URI (DNS SRV bypassed for maximum reliability).
-*   **Collections:** `users`, `watchlists`, `alerts`.
-
-</details>
-
----
-
-<div align="center">
-  <sub>Documentation © Open Dev Society. Built with ❤️ for the Open Source Community.</sub>
-</div>
+Tradebook by Nexus is built on [OpenStock](https://github.com/Open-Dev-Society/OpenStock) and is licensed
+under AGPL-3.0.
