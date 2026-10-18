@@ -168,4 +168,9 @@ Research (Apache-2.0), [edgartools](https://github.com/dgunning/edgartools) (MIT
 from [World Monitor](https://github.com/koala73/worldmonitor) (AGPL-3.0). It is licensed under **AGPL-3.0**, like OpenStock: if you run a modified
 copy for others, you must offer them its source.
 
-Tradebook is a research and education tool, not financial advice.
+Apex Tradebook is a research and education tool, not financial advice. It is not a registered dealer or adviser.
+
+## Operations notes
+
+- **Email verification** turns on by itself when `NODEMAILER_EMAIL` and `NODEMAILER_PASSWORD` are set. Accounts created before that must confirm once: signing in re-sends them a link.
+- **Failure alerts:** in the Inngest dashboard, open Settings, then Alerts (or Notifications), and add an email for failed function runs, so a broken nightly scan does not go unnoticed.

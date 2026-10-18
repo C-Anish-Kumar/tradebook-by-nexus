@@ -69,7 +69,7 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
                     </button>
                 </div>
                 <p className="px-4 pb-4 text-[12px] text-faint">
-                    Scans run automatically after the US close. The quant score rates each setup out of 100 and is capped at 69 until every validation gate passes; an unvalidated setup is a hypothesis to paper-trade, not an edge.
+                    Scans run automatically after the US close. The quant score rates each setup out of 100 and is capped at 69 until every validation gate passes; an unvalidated setup is a hypothesis to paper-trade, not an edge. Educational ideas only, not personalised advice or a recommendation to buy or sell; Apex Tradebook is not a registered dealer or adviser, and you place any trade yourself.
                 </p>
             </Panel>
 

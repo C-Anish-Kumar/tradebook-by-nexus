@@ -5,6 +5,8 @@ import {nextCookies} from "better-auth/next-js";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { sendPasswordResetEmail } from "@/lib/nodemailer/reset-password";
+import { sendVerificationEmail } from "@/lib/nodemailer/verify-email";
+import { mailConfigured } from "@/lib/mail-config";
 
 
 type MongoDb = Parameters<typeof mongodbAdapter>[0];
@@ -26,7 +28,8 @@ const createAuth = (database: MongoDb) => betterAuth({
         emailAndPassword: {
             enabled: true,
             disableSignUp: false,
-            requireEmailVerification: false,
+            // Only when mail can actually be sent; sign-in re-sends the link to anyone not yet verified
+            requireEmailVerification: mailConfigured,
             minPasswordLength: 8,
             maxPasswordLength: 128,
             autoSignIn: true,
@@ -37,6 +40,16 @@ const createAuth = (database: MongoDb) => betterAuth({
                     resetUrl: url,
                 }).catch((error) => {
                     console.error('Failed to queue password reset email:', error);
+                });
+            },
+        },
+        emailVerification: {
+            sendOnSignUp: mailConfigured,
+            sendOnSignIn: mailConfigured,
+            autoSignInAfterVerification: true,
+            sendVerificationEmail: async ({ user, url }) => {
+                void sendVerificationEmail({ email: user.email, name: user.name, verifyUrl: url }).catch((error) => {
+                    console.error('Failed to send verification email:', error);
                 });
             },
         },
