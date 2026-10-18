@@ -7,14 +7,14 @@ const ringColor = (score: number) =>
 /** The 0-100 quant score as a ring with its label. */
 export function QuantBadge({ quant, className }: { quant: QuantScore; className?: string }) {
     return (
-        <div className={cn('flex items-center gap-2.5', className)} title="Quant score: setup quality out of 100, not a forecast">
+        <div className={cn('flex items-center gap-3', className)} title="Quant score: setup quality out of 100, not a forecast">
             <div
                 role="img"
                 aria-label={`Quant score ${quant.score} out of 100, ${quant.label}`}
-                className="grid size-11 flex-none place-items-center rounded-full"
+                className="grid size-[64px] flex-none place-items-center rounded-full"
                 style={{ background: `conic-gradient(${ringColor(quant.score)} ${quant.score * 3.6}deg, var(--line) 0)` }}
             >
-                <span className="num grid size-[34px] place-items-center rounded-full bg-page text-[14px] font-semibold">{quant.score}</span>
+                <span className="num grid size-[56px] place-items-center rounded-full bg-card text-[20px] font-medium">{quant.score}</span>
             </div>
             <div className="leading-tight">
                 <p className="kicker">Quant score</p>

@@ -79,7 +79,7 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
 
             {sorted.map(({ symbol, stored, setup, earningsDate }) => (
                 <Panel key={symbol}>
-                    <div className="flex flex-col gap-3 p-4">
+                    <div className="flex flex-col gap-4 p-5">
                         <div className="flex flex-wrap items-center gap-2">
                             {setup?.quant && <QuantBadge quant={setup.quant} className="mr-1" />}
                             <Link href={`/stocks/${encodeURIComponent(symbol)}`} className="num text-[15px] font-semibold hover:underline">{symbol}</Link>
@@ -104,10 +104,10 @@ export default function SetupsBoard({ rows }: { rows: SetupRow[] }) {
                             ];
                             return (
                                 <>
-                                    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                    <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-3 sm:grid-cols-4">
                                         {stats.map(([k, v]) => (
-                                            <div key={k} className="rounded-[10px] bg-page px-3 py-2 shadow-[inset_0_0_0_1px_var(--line)]">
-                                                <dt className="kicker">{k}</dt><dd className="num text-[14px] font-semibold">{v}</dd>
+                                            <div key={k}>
+                                                <dt className="kicker">{k}</dt><dd className="num mt-0.5 text-[14px]">{v}</dd>
                                             </div>
                                         ))}
                                     </dl>

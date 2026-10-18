@@ -4,35 +4,34 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design language: dashboard-craft (floated shell, dark chrome, browser tabs,
- * hatch shells, bento tiles) in a dark warm workspace.
- * Two hues carry everything: neutral hue 95 (warm) and accent hue 176 (brand teal).
- * Up/down share one lightness (0.70) and chroma % so neither shouts louder.
+ * Design language: calm dark. Flat surfaces separated by hairlines instead of boxes and shadows,
+ * one accent (teal, hue 176) on neutral cool greys (hue 260), mono numerals, generous space.
+ * Up/down share one lightness and chroma so neither shouts louder.
  */
 :root {
-    --page:        oklch(0.13 0.006 95);    /* near-black behind the floated app */
-    --side:        oklch(0.165 0.007 95);   /* sidebar + tab chrome */
-    --frame:       oklch(0.185 0.007 95);   /* hatch shell frame (recessed) */
-    --canvas:      oklch(0.205 0.007 95);   /* workspace; active tab = canvas */
-    --card:        oklch(0.235 0.008 95);   /* inner card (raised) */
-    --hover:       oklch(0.27 0.008 95);
-    --line:        oklch(0.29 0.008 95);
-    --line-strong: oklch(0.36 0.01 95);
-    --text:        oklch(0.95 0.006 95);
-    --muted:       oklch(0.74 0.012 95);
-    --faint:       oklch(0.62 0.012 95);
+    --page:        oklch(0.145 0.004 260);  /* app background */
+    --side:        oklch(0.145 0.004 260);  /* sidebar + tab chrome: same as page, so chrome disappears */
+    --frame:       oklch(0.145 0.004 260);
+    --canvas:      oklch(0.17 0.004 260);   /* workspace */
+    --card:        oklch(0.17 0.004 260);   /* cards sit on the canvas, separated by a hairline only */
+    --hover:       oklch(0.215 0.005 260);
+    --line:        oklch(0.25 0.005 260);
+    --line-strong: oklch(0.33 0.006 260);
+    --text:        oklch(0.95 0.003 260);
+    --muted:       oklch(0.74 0.006 260);
+    --faint:       oklch(0.60 0.007 260);
 
-    --brand:        oklch(0.80 0.13 176);   /* fills + icons */
-    --brand-strong: oklch(0.72 0.12 176);
-    --brand-ink:    oklch(0.85 0.12 176);   /* the only brand colour allowed as text */
-    --brand-soft:   oklch(0.31 0.05 176);   /* brand as a fill behind text */
-    --on-brand:     oklch(0.22 0.04 176);
+    --brand:        oklch(0.80 0.11 176);   /* the one accent */
+    --brand-strong: oklch(0.72 0.10 176);
+    --brand-ink:    oklch(0.84 0.10 176);   /* the only brand colour allowed as text */
+    --brand-soft:   oklch(0.27 0.035 176);
+    --on-brand:     oklch(0.20 0.03 176);
 
-    --up:        oklch(0.70 0.164 150);
-    --up-soft:   oklch(0.30 0.055 150);
-    --down:      oklch(0.70 0.162 25);
-    --down-soft: oklch(0.30 0.055 25);
-    --warn:      oklch(0.76 0.119 70);
+    --up:        oklch(0.72 0.13 155);
+    --up-soft:   oklch(0.25 0.035 155);
+    --down:      oklch(0.70 0.13 25);
+    --down-soft: oklch(0.25 0.035 25);
+    --warn:      oklch(0.76 0.10 75);
 
     --tab-ease: cubic-bezier(0.32, 0.72, 0, 1);
     --ui-ease:  cubic-bezier(0.2, 0, 0, 1);
@@ -193,7 +192,7 @@
         overflow: hidden;
         border-radius: 16px;
         background: var(--side);
-        box-shadow: 0 0 0 1px oklch(1 0 0 / 0.04), 0 12px 40px oklch(0 0 0 / 0.45);
+        box-shadow: 0 0 0 1px var(--line);
     }
 
     .workspace {
@@ -240,8 +239,8 @@
 
     .side-label {
         padding: 0 10px;
-        font-size: 11px;
-        font-weight: 700;
+        font-size: 10.5px;
+        font-weight: 600;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: var(--faint);
@@ -254,7 +253,7 @@
         height: 34px;
         padding: 0 10px;
         border-radius: 9px;
-        font-weight: 600;
+        font-weight: 500;
         color: var(--muted);
         transition: background-color 150ms var(--ui-ease), color 150ms var(--ui-ease), transform 150ms var(--ui-ease);
     }
@@ -270,10 +269,9 @@
         height: 40px;
         padding: 0 12px;
         border-radius: 11px;
-        font-weight: 700;
+        font-weight: 600;
         color: var(--on-brand);
         background: var(--brand);
-        box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.35), 0 6px 18px oklch(0.8 0.13 176 / 0.18);
         transition: background-color 150ms var(--ui-ease), transform 150ms var(--ui-ease);
     }
     .side-cta:hover { background: var(--brand-ink); }
@@ -405,25 +403,18 @@
 
     /* ============ Hatch shells ============ */
 
+    /* Panels are flat now: no hatch frame, just a hairline-bordered surface */
     .hatch {
-        --shell-pad: 3px;
-        --inner-r: 14px;
         display: flex;
         flex-direction: column;
         min-width: 0;
-        padding: var(--shell-pad);
-        border-radius: calc(var(--inner-r) + var(--shell-pad));
-        background:
-            repeating-linear-gradient(-45deg, oklch(0.4 0.01 95 / 0.22) 0 1px, transparent 1px 5px),
-            var(--frame);
-        box-shadow: 0 0 0 1px oklch(1 0 0 / 0.035), 0 6px 18px oklch(0 0 0 / 0.22);
     }
 
     .card {
         min-width: 0;
-        border-radius: 14px;
+        border-radius: 12px;
         background: var(--card);
-        box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05), 0 0 0 1px oklch(0 0 0 / 0.25);
+        box-shadow: 0 0 0 1px var(--line);
     }
 
     .section-head {
@@ -431,11 +422,11 @@
         align-items: flex-end;
         justify-content: space-between;
         gap: 12px;
-        padding: 10px 12px 9px;
+        padding: 4px 2px 10px;
     }
     .section-title {
-        font-size: 15px;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 600;
         letter-spacing: -0.02em;
         color: var(--text);
     }
@@ -451,12 +442,12 @@
         align-items: flex-end;
         justify-content: space-between;
         gap: 12px;
-        padding: 4px 4px 2px;
+        padding: 8px 2px 6px;
     }
     .page-title {
-        font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -0.04em;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
         color: var(--text);
     }
     .page-sub {
@@ -465,9 +456,9 @@
     }
 
     .kicker {
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.06em;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--faint);
     }
@@ -477,7 +468,7 @@
     .bento {
         display: grid;
         grid-template-columns: repeat(12, minmax(0, 1fr));
-        gap: 3px;
+        gap: 10px;
     }
     .bento-tile {
         grid-column: span 3;
@@ -486,9 +477,9 @@
         gap: 12px;
         min-width: 0;
         padding: 14px 14px 12px;
-        border-radius: 14px;
+        border-radius: 12px;
         background: var(--card);
-        box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
+        box-shadow: 0 0 0 1px var(--line);
     }
     @media (max-width: 1023px) { .bento-tile { grid-column: span 6; } }
 
@@ -508,13 +499,14 @@
         width: 28px;
         height: 28px;
         border-radius: 999px;
-        background: oklch(1 0 0 / 0.06);
+        background: var(--hover);
         color: var(--muted);
     }
     .bento-ico svg { width: 15px; height: 15px; }
     .bento-value {
-        font-size: 28px;
-        font-weight: 700;
+        font-family: var(--font-plex-mono), ui-monospace, monospace;
+        font-size: 26px;
+        font-weight: 500;
         line-height: 1;
         letter-spacing: -0.04em;
         color: var(--text);
@@ -538,7 +530,7 @@
 
     /* ============ Pills, buttons, numbers ============ */
 
-    .num { font-variant-numeric: tabular-nums; }
+    .num { font-family: var(--font-plex-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
     .mono { font-family: var(--font-plex-mono), ui-monospace, monospace; }
 
     .pill {
@@ -550,9 +542,9 @@
         padding: 0 8px;
         border-radius: 999px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 600;
         font-variant-numeric: tabular-nums;
-        background: oklch(1 0 0 / 0.06);
+        background: var(--hover);
         color: var(--muted);
     }
     .pill svg { width: 12px; height: 12px; }
@@ -568,7 +560,7 @@
         height: 36px;
         padding: 0 14px;
         border-radius: 10px;
-        font-weight: 700;
+        font-weight: 600;
         white-space: nowrap;
         cursor: pointer;
         transition: background-color 150ms var(--ui-ease), color 150ms var(--ui-ease), transform 150ms var(--ui-ease), box-shadow 150ms var(--ui-ease);
@@ -579,7 +571,6 @@
     .btn-primary {
         color: var(--on-brand);
         background: var(--brand);
-        box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.35), 0 6px 18px oklch(0.8 0.13 176 / 0.16);
     }
     .btn-primary:hover:not(:disabled) { background: var(--brand-ink); }
     .btn-ghost {
@@ -622,21 +613,20 @@
         padding: 0 14px;
         background: var(--card);
         border-bottom: 1px solid var(--line);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.06em;
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
         text-align: left;
         color: var(--faint);
         white-space: nowrap;
     }
     .data-table td {
-        height: 58px;
+        height: 54px;
         padding: 0 14px;
-        border-bottom: 1px solid oklch(1 0 0 / 0.04);
+        border-bottom: 1px solid var(--line);
         white-space: nowrap;
     }
-    .data-table tbody tr:nth-child(odd) td { background: oklch(1 0 0 / 0.012); }
     .data-table tbody tr { transition: background-color 150ms var(--ui-ease); }
     .data-table tbody tr:hover td { background: oklch(1 0 0 / 0.035); }
     .data-table tbody tr:last-child td { border-bottom: 0; }
@@ -708,7 +698,6 @@
 @layer utilities {
     .yellow-btn {
         @apply h-12 cursor-pointer rounded-[11px] bg-brand text-on-brand font-bold text-base disabled:opacity-50 hover:bg-brand-ink active:scale-[0.97] transition-[background-color,transform] duration-150;
-        box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.35), 0 6px 18px oklch(0.8 0.13 176 / 0.16);
     }
     .auth-layout {
         @apply flex flex-col justify-between lg:flex-row h-dvh bg-page relative overflow-hidden;
