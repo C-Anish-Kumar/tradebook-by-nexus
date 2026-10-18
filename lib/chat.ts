@@ -6,7 +6,7 @@ import type { Strategy } from '@/lib/strategies';
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 export const MAX_HISTORY = 10;
-export const MAX_MESSAGE_CHARS = 1500;
+const MAX_MESSAGE_CHARS = 1500;
 
 // Short upper-case words that are not tickers
 const NOT_TICKERS = new Set([
@@ -63,7 +63,7 @@ export function formatSetup(symbol: string, strategy: Strategy, setup: Setup): s
     return bits.join('; ');
 }
 
-export const CHAT_RULES = `You are the trade-signal assistant inside Tradebook by Nexus. Answer using ONLY the DATA section.
+const CHAT_RULES = `You are the trade-signal assistant inside Tradebook by Nexus. Answer using ONLY the DATA section.
 - Never invent prices, scores, levels, statuses or strategies. Quote numbers exactly as given. If the data does not cover something, say so plainly.
 - Lead with the signal: stock, strategy, status, quant score, and entry/stop/targets when a plan exists. Rank by status (entry first, then watching), then by quant score.
 - Always say whether a setup is Validated or Unvalidated. Unvalidated means a paper-trade idea, not an edge, and its score is capped at 69.
