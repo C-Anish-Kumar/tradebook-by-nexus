@@ -16,13 +16,17 @@ export type AnalystJob = {
     error?: string;
 };
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-    if (!analystEnabled) throw new Error('AI Analyst is not configured');
+// One place builds the auth headers for every call to the service
+const serviceHeaders = () => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Analyst-Key': API_KEY! };
     // A private Hugging Face Space also wants a token
     if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
+    return headers;
+};
 
-    const res = await fetch(`${SERVICE_URL}${path}`, { ...init, headers, cache: 'no-store' });
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+    if (!analystEnabled) throw new Error('AI Analyst is not configured');
+    const res = await fetch(`${SERVICE_URL}${path}`, { ...init, headers: serviceHeaders(), cache: 'no-store' });
     if (res.status === 404) throw new AnalystJobMissingError();
     if (!res.ok) throw new Error(`Analyst service ${res.status}: ${(await res.text()).slice(0, 200)}`);
     return res.json() as Promise<T>;
@@ -130,12 +134,6 @@ export async function getBacktest(ticker: string, years: number): Promise<Backte
     }, { throwOnMiss: true });
     return result!;
 }
-
-const serviceHeaders = () => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Analyst-Key': API_KEY! };
-    if (process.env.ANALYST_HF_TOKEN) headers.Authorization = `Bearer ${process.env.ANALYST_HF_TOKEN}`;
-    return headers;
-};
 
 export type FundamentalsLine = { key: string; label: string; values: (number | null)[] };
 export type InsiderTrade = {

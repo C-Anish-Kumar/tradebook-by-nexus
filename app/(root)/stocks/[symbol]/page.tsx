@@ -5,6 +5,7 @@ import StockHeader, { StockHeaderSkeleton } from "@/components/stocks/StockHeade
 import StockSentimentCard from "@/components/stocks/StockSentimentCard";
 import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import StrategyPanel from "@/components/stocks/StrategyPanel";
+import { STRATEGY_1 } from "@/lib/strategies";
 import BacktestPanel from "@/components/stocks/BacktestPanel";
 import FundamentalsPanel from "@/components/stocks/FundamentalsPanel";
 import Panel from "@/components/Panel";
@@ -47,7 +48,7 @@ async function Strategy({ symbol }: { symbol: string }) {
     if (!signals) {
         // First visit while the Space sleeps: say so instead of silently dropping the panels
         return (
-            <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+            <Panel title={STRATEGY_1.label} sub={`${STRATEGY_1.name}: ${STRATEGY_1.rules}`}>
                 <div className="empty-state py-10">
                     <h3>Waking up the analyst service</h3>
                     <p className="max-w-80 text-[13px]">The strategy checklist, backtest and fundamentals for {symbol} will be ready in about a minute. Refresh then.</p>
@@ -57,7 +58,7 @@ async function Strategy({ symbol }: { symbol: string }) {
     }
     return (
         <>
-            <Panel title="Strategy" sub="10/21 EMA + Supertrend (10,3) rules on the daily chart">
+            <Panel title={STRATEGY_1.label} sub={`${STRATEGY_1.name}: ${STRATEGY_1.rules}`}>
                 <StrategyPanel signals={signals} />
             </Panel>
             <Panel title="Backtest" sub="How these rules would have traded this stock">

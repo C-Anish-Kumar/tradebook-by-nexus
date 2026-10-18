@@ -4,9 +4,9 @@
 import { cached, readCache, writeCache } from '@/lib/cache';
 import { callAIProviderWithFallback } from '@/lib/ai-provider';
 import { isMarketOpen, getMarket } from '@/lib/markets';
+import { FINNHUB_KEYS } from '@/lib/finnhub-keys';
 
-const FINNHUB_KEY = (process.env.FINNHUB_API_KEYS || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || process.env.FINNHUB_API_KEY || '')
-    .split(',').map((k) => k.trim()).filter(Boolean)[0];
+const FINNHUB_KEY = FINNHUB_KEYS[0];
 const HOUR = 60 * 60_000;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const daysFromNow = (n: number) => isoDay(new Date(Date.now() + n * 86_400_000));

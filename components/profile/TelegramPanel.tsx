@@ -13,12 +13,13 @@ import {
 } from "@/lib/actions/notification.actions";
 import type { NotificationPrefs } from "@/database/models/notification.model";
 import { cn } from "@/lib/utils";
+import { STRATEGY_1, STRATEGY_2 } from "@/lib/strategies";
 
 const OPTIONS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
     { key: 'alerts', label: 'Price alerts', detail: 'The moment one of your alerts triggers' },
     { key: 'daily', label: 'Daily summary', detail: 'Your watchlist after each US market close' },
-    { key: 'signals', label: 'Strategy signals', detail: 'When a watched stock turns into an entry, trim or exit' },
-    { key: 'setups', label: 'Breakout setups', detail: 'A fresh regime-gated breakout entry or exit on a watched stock, with its evidence' },
+    { key: 'signals', label: `${STRATEGY_1.label} signals`, detail: `${STRATEGY_1.name}: when a watched stock turns into an entry, trim or exit` },
+    { key: 'setups', label: `${STRATEGY_2.label} setups`, detail: `${STRATEGY_2.name}: a fresh breakout entry or exit on a watched stock, with its evidence` },
     { key: 'earnings', label: 'Earnings', detail: 'The day before a watched stock reports, then beat or miss' },
 ];
 
@@ -95,7 +96,7 @@ export default function TelegramPanel({ initial }: { initial: TelegramStatus }) 
         return (
             <div className="flex flex-col gap-3 p-4">
                 <p className="text-[13px] text-muted-foreground">
-                    Get price alerts, a daily watchlist summary, strategy signals and earnings reminders in Telegram. Free, and you can stop any time.
+                    Get price alerts, a daily watchlist summary, signals from Strategy 1 and Strategy 2 (your choice) and earnings reminders in Telegram. Free, and you can stop any time.
                 </p>
                 <ol className="list-decimal pl-5 text-[13px] text-muted-foreground">
                     <li>Tap <b>Connect Telegram</b>. Telegram opens.</li>

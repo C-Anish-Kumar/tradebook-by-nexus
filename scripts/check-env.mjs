@@ -2,9 +2,9 @@
 
 /**
  * Environment Variables Checker
- * Run: node scripts/check-env.mjs
+ * Run: npm run check-env
  *
- * Checks your .env file against the requirements for OpenStock.
+ * Checks your .env file against the requirements for Tradebook by Nexus.
  * Provides detailed feedback on missing, present, and deprecated variables,
  * along with guidance on how to fix common issues.
  */
@@ -27,10 +27,6 @@ const requiredVars = {
     // Better Auth
     'BETTER_AUTH_SECRET': 'Secret key for Better Auth (generate with: openssl rand -hex 32)',
     'BETTER_AUTH_URL': 'Auth URL (e.g., http://localhost:3000 or https://your-domain.com)',
-
-    // Finnhub (Market data - required for stock features)
-    'NEXT_PUBLIC_FINNHUB_API_KEY': 'Finnhub API key (free tier available at finnhub.io)',
-    'FINNHUB_BASE_URL': 'Finnhub API base URL (default: https://finnhub.io/api/v1)',
 
     // Inngest (Background jobs, cron, AI)
     'INNGEST_SIGNING_KEY': 'Inngest signing key (required for Vercel deployment; get from Inngest dashboard)',
@@ -56,13 +52,38 @@ const optionalVars = {
 
     // MiniMax (optional AI provider fallback)
     'MINIMAX_API_KEY': 'MiniMax API key (used when AI_PROVIDER=minimax or as fallback)',
+    'MINIMAX_BASE_URL': 'MiniMax API base URL override (default: https://api.minimax.io/v1)',
+    'MINIMAX_MODEL': 'MiniMax model id (default: MiniMax-M3)',
+    'SIRAY_API_KEY': 'Siray.ai API key (second fallback when AI_PROVIDER or the primary fails)',
+    'GEMINI_MODEL': 'Gemini model id (default: gemini-3.5-flash-lite; older ids are tried if one is retired)',
 
     // Kit (ConvertKit) for email broadcasts
     'KIT_API_KEY': 'ConvertKit API key (for news summary broadcasts)',
     'KIT_API_SECRET': 'ConvertKit API secret (for news summary broadcasts)',
 
-    // Market data freshness + key pool
-    'FINNHUB_API_KEYS': 'Comma-separated Finnhub keys, rotated per request (each adds 60 req/min). Falls back to NEXT_PUBLIC_FINNHUB_API_KEY',
+    // AI analyst Space (Strategy 1, Strategy 2, backtests, fundamentals, AI Analyst)
+    'ANALYST_SERVICE_URL': 'URL of the Hugging Face Space running analyst-service/. Without it the AI Analyst, strategies and Setups are off',
+    'ANALYST_API_KEY': 'Shared secret the web app sends to the analyst Space (X-Analyst-Key). Must match the Space',
+    'ANALYST_HF_TOKEN': 'Only if the analyst Space is private: a Hugging Face read token',
+    'ANALYST_DAILY_LIMIT': 'AI Analyst runs allowed per user per day (default 5)',
+
+    // RL Lab (separate Nexus Space)
+    'NEXUS_SERVICE_URL': 'URL of the Nexus Space. Without it RL Lab is off',
+    'NEXUS_API_KEY': 'Shared secret for the Nexus Space',
+    'NEXUS_HF_TOKEN': 'Only if the Nexus Space is private: a Hugging Face read token',
+    'NEXUS_DAILY_LIMIT': 'RL Lab runs allowed per user per day (default 10)',
+
+    // Telegram
+    'TELEGRAM_BOT_TOKEN': 'Bot token from @BotFather. Turns on Telegram messages',
+    'TELEGRAM_WEBHOOK_SECRET': 'Random string Telegram sends back so the webhook knows the call is genuine (openssl rand -hex 24)',
+    'TELEGRAM_BOT_USERNAME': 'Bot username, only needed if it cannot be looked up automatically',
+
+    // Macro data and misc
+    'FRED_API_KEY': 'Free FRED key (fred.stlouisfed.org). Turns on the economic calendar',
+    'NEXT_PUBLIC_SUPPORT_EMAIL': 'Shows a support email link on the Help and Terms pages',
+    'KIT_WELCOME_FORM_ID': 'Kit form id used for the welcome subscription',
+
+    // Market data freshness
     'NEXT_PUBLIC_OPENSTOCK_DATA_MODE': '"cached" (default: quotes refresh hourly, shared by everyone) or "realtime" (every 15s; OpenStock Cloud / self-hosted)',
 
     // Social sign-in (Better Auth)
@@ -80,8 +101,9 @@ const optionalVars = {
  * Warns if these are set so you can migrate away.
  */
 const deprecatedVars = {
-    // Legacy Finnhub key (deprecated in favor of NEXT_PUBLIC_FINNHUB_API_KEY)
-    'FINNHUB_API_KEY': 'Legacy Finnhub key - use NEXT_PUBLIC_FINNHUB_API_KEY instead',
+    // Older single-key Finnhub names, still read as a fallback
+    'FINNHUB_API_KEY': 'Older Finnhub key name - use FINNHUB_API_KEYS instead',
+    'NEXT_PUBLIC_FINNHUB_API_KEY': 'Older Finnhub key name (also exposed to the browser) - use FINNHUB_API_KEYS instead',
 };
 
 // =============================================
@@ -94,14 +116,6 @@ const state = {
     warnings: [],
     optionalPresent: [],
 };
-
-// Helper to classify a variable
-function classifyVar(key) {
-    if (requiredVars[key] !== undefined) return 'required';
-    if (optionalVars[key] !== undefined) return 'optional';
-    if (deprecatedVars[key] !== undefined) return 'deprecated';
-    return 'unknown';
-}
 
 // =============================================
 // MASKING HELPER
@@ -146,6 +160,25 @@ for (const [key, description] of Object.entries(requiredVars)) {
             category: 'required',
         });
     }
+}
+
+// 1b. Finnhub needs at least one key, under any of its names
+const finnhubNames = ['FINNHUB_API_KEYS', 'NEXT_PUBLIC_FINNHUB_API_KEY', 'FINNHUB_API_KEY'];
+const finnhubSet = finnhubNames.find((n) => (process.env[n] || '').trim());
+if (!finnhubSet) {
+    state.missing.push({
+        key: 'FINNHUB_API_KEYS',
+        description: 'At least one Finnhub key (free at finnhub.io). Comma-separate several to multiply the rate limit',
+        severity: 'critical',
+        hint: 'Set FINNHUB_API_KEYS=your_key in .env',
+    });
+} else {
+    state.present.push({
+        key: finnhubSet,
+        description: 'Finnhub market data key',
+        value: maskValue(process.env[finnhubSet].trim()),
+        category: 'required',
+    });
 }
 
 // 2. Check deprecated variables
@@ -246,7 +279,7 @@ if (state.optionalPresent.length === 0) {
 
 console.log('\n' + '='.repeat(70));
 const criticalMissing = state.missing.filter(m => m.severity === 'critical').length;
-const totalRequired = Object.keys(requiredVars).length;
+const totalRequired = Object.keys(requiredVars).length + 1; // + the Finnhub key, checked separately
 const presentRequired = state.present.length;
 
 console.log(`Summary: ${presentRequired}/${totalRequired} required variables present`);

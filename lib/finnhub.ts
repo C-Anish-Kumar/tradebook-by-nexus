@@ -8,13 +8,10 @@ import { cache } from 'react';
 import { QUOTE_TTL_SECONDS } from '@/lib/market-data';
 import { hasFinnhubQuotes } from '@/lib/markets';
 import { getSession } from '@/lib/better-auth/auth';
+import { FINNHUB_KEYS } from '@/lib/finnhub-keys';
 
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 // Key pool: each free key has its own 60 req/min, so N keys = N x the quota. Rotated per request.
-const FINNHUB_KEYS = (process.env.FINNHUB_API_KEYS || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || process.env.FINNHUB_API_KEY || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
 let nextKeyIndex = 0;
 const FETCH_TIMEOUT_MS = 5000;
 // Finnhub stalls bursts of parallel requests from one key (measured: 4 at once -> most hang),

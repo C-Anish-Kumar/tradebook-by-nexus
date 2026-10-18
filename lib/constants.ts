@@ -1,6 +1,5 @@
 // Source code for this deployment (the AGPL asks network users to be offered it)
 export const REPO_URL = 'https://github.com/C-Anish-Kumar/tradebook-by-nexus';
-export const GOOD_FIRST_ISSUES_URL = `${REPO_URL}/issues`;
 
 // Sign-up form select options
 export const INVESTMENT_GOALS = [
@@ -22,16 +21,6 @@ export const PREFERRED_INDUSTRIES = [
     { value: 'Finance', label: 'Finance' },
     { value: 'Energy', label: 'Energy' },
     { value: 'Consumer Goods', label: 'Consumer Goods' },
-];
-
-export const ALERT_TYPE_OPTIONS = [
-    { value: 'upper', label: 'Upper' },
-    { value: 'lower', label: 'Lower' },
-];
-
-export const CONDITION_OPTIONS = [
-    { value: 'greater', label: 'Greater than (>)' },
-    { value: 'less', label: 'Less than (<)' },
 ];
 
 // TradingView widgets, built per market from lib/markets.ts groups
@@ -199,20 +188,6 @@ export const POPULAR_STOCKS = [
     { symbol: 'NFLX', name: 'Netflix Inc', exchange: 'NASDAQ' },
     { symbol: 'AMD', name: 'Advanced Micro Devices Inc', exchange: 'NASDAQ' },
     { symbol: 'JPM', name: 'JPMorgan Chase & Co', exchange: 'NYSE' },
-];
-
-export const NO_MARKET_NEWS =
-    '<p class="mobile-text" style="margin:0 0 20px 0;font-size:16px;line-height:1.6;color:#4b5563;">No market news available today. Please check back tomorrow.</p>';
-
-export const WATCHLIST_TABLE_HEADER = [
-    'Company',
-    'Symbol',
-    'Price',
-    'Change',
-    'Market Cap',
-    'P/E Ratio',
-    'Alert',
-    'Action',
 ];
 
 export const PASSWORD_RULES = [

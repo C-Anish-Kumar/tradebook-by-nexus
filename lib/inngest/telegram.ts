@@ -3,6 +3,7 @@ import { APP_URL } from '@/lib/brand';
 import { readCache, writeCache } from '@/lib/cache';
 import { analystEnabled, fetchStrategySignals } from '@/lib/analyst';
 import { refreshEarningsCalendar, type EarningsCalendar } from '@/lib/market-intel';
+import { STRATEGY_1 } from '@/lib/strategies';
 import { escapeHtml, getBotUsername, setTelegramCommands, setTelegramWebhook, telegramEnabled } from '@/lib/telegram';
 import {
     buildWatchlistSummary, earningsDayLabel, earningsHourLabel, formatUsd, linkedUsers, notify, stockLink, watchlistsFor,
@@ -72,7 +73,7 @@ export const watchStrategySignals = inngest.createFunction(
                         `${icon} <b>${stockLink(symbol)}: ${escapeHtml(s.verdict)}</b>`,
                         `Was: ${escapeHtml(prev.verdict)}`,
                         `Close ${formatUsd(s.close)} · stop ${formatUsd(s.risk.stop)}${s.risk.target_4r ? ` · 4R target ${formatUsd(s.risk.target_4r)}` : ''}`,
-                        `<i>10/21 EMA + Supertrend (10,3), daily candles. Not financial advice.</i>`,
+                        `<i>${STRATEGY_1.label} (${STRATEGY_1.name}), daily candles. Not financial advice.</i>`,
                     ].join('\n'),
                 });
             } catch (error) {

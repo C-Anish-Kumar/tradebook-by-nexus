@@ -1,5 +1,6 @@
 // Trade setups from the analyst service's /setups endpoint: types and the pure helpers around them
 // (no server-only imports, so the page, the Inngest job and the tests can all share them).
+import { STRATEGY_2 } from '@/lib/strategies';
 
 export type SetupStatus = 'entry' | 'holding' | 'watch' | 'none';
 
@@ -88,6 +89,6 @@ export function setupMessage(link: string, setup: Setup, kind: Exclude<Transitio
         `Size: account × your risk % ÷ ${usd(p.risk_per_share)}`,
         `Evidence: walk-forward Sharpe ${ev.oos_sharpe ?? 'n/a'}, deflated Sharpe ${ev.deflated_sharpe ?? 'n/a'} over ${ev.trials ?? '?'} trials`,
         `<i>${esc(tag)}</i>`,
-        `<i>Daily candles. Not financial advice.</i>`,
+        `<i>${STRATEGY_2.label} (${STRATEGY_2.name}), daily candles. Not financial advice.</i>`,
     ].join('\n');
 }

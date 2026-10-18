@@ -3,6 +3,7 @@ import { analystEnabled } from '@/lib/analyst';
 import { getSetupBoard } from '@/lib/actions/setups.actions';
 import SetupsBoard from '@/components/setups/SetupsBoard';
 import Panel from '@/components/Panel';
+import { STRATEGY_2 } from '@/lib/strategies';
 
 export const metadata = { title: 'Setups | Tradebook by Nexus' };
 
@@ -14,7 +15,7 @@ export default async function SetupsPage() {
             <header className="page-head">
                 <div>
                     <h1 className="page-title">Setups</h1>
-                    <p className="page-sub">Regime-aware breakout entries on your watchlist, each shown with the evidence behind it</p>
+                    <p className="page-sub">{STRATEGY_2.label}: regime-aware breakout entries on your watchlist, each shown with the evidence behind it</p>
                 </div>
             </header>
             {analystEnabled ? (
