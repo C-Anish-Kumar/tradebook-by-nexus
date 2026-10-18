@@ -28,6 +28,15 @@ async function call<T>(method: string, body: Record<string, unknown>): Promise<T
 export const sendTelegram = (chatId: string, html: string) =>
     call('sendMessage', { chat_id: chatId, text: html, parse_mode: 'HTML', link_preview_options: { is_disabled: true } });
 
+/** A message with inline buttons; each button is { text, callback_data }. */
+export const sendTelegramButtons = (chatId: string, html: string, buttons: { text: string; callback_data: string }[]) =>
+    call('sendMessage', { chat_id: chatId, text: html, parse_mode: 'HTML', reply_markup: { inline_keyboard: [buttons] } });
+
+export const answerCallback = (id: string, text?: string) => call('answerCallbackQuery', { callback_query_id: id, text });
+
+export const editTelegram = (chatId: string, messageId: number, html: string) =>
+    call('editMessageText', { chat_id: chatId, message_id: messageId, text: html, parse_mode: 'HTML' });
+
 let username: string | null = null;
 export async function getBotUsername(): Promise<string> {
     if (username) return username;
@@ -37,7 +46,7 @@ export async function getBotUsername(): Promise<string> {
 }
 
 export const setTelegramWebhook = (url: string) =>
-    call('setWebhook', { url, secret_token: WEBHOOK_SECRET || undefined, allowed_updates: ['message'], drop_pending_updates: true });
+    call('setWebhook', { url, secret_token: WEBHOOK_SECRET || undefined, allowed_updates: ['message', 'callback_query'], drop_pending_updates: true });
 
 export const setTelegramCommands = () =>
     call('setMyCommands', {

@@ -172,5 +172,6 @@ Apex Tradebook is a research and education tool, not financial advice. It is not
 
 ## Operations notes
 
-- **Email verification** turns on by itself when `NODEMAILER_EMAIL` and `NODEMAILER_PASSWORD` are set. Accounts created before that must confirm once: signing in re-sends them a link.
+- **Email verification:** with `NODEMAILER_EMAIL` and `NODEMAILER_PASSWORD` set, new accounts get a confirmation email, but it does not block sign-in.
+- **Sign in with Telegram** needs the bot configured (see the Telegram variables). After deploying it, send the Inngest event `app/telegram.setup` once so the bot also receives the Approve button taps.
 - **Failure alerts:** in the Inngest dashboard, open Settings, then Alerts (or Notifications), and add an email for failed function runs, so a broken nightly scan does not go unnoticed.
