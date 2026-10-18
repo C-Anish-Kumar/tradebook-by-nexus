@@ -10,7 +10,6 @@ import { auth, getSession } from "@/lib/better-auth/auth";
 import { getUserWatchlist } from "@/lib/actions/watchlist.actions";
 import { getUserAlerts } from "@/lib/actions/alert.actions";
 import { alertsEnabled } from "@/lib/market-data";
-import { hasRealEmail } from '@/lib/mail-config';
 
 export const metadata = { title: 'Profile | Apex Tradebook' };
 
@@ -50,7 +49,7 @@ export default async function ProfilePage() {
                     </span>
                     <div className="min-w-0 flex-1">
                         <h1 className="truncate text-[22px] font-bold tracking-[-0.03em]">{user.name}</h1>
-                        <p className="truncate text-faint">{hasRealEmail(user.email) ? user.email : 'Signed in with Telegram'} · member since {memberSince}</p>
+                        <p className="truncate text-faint">{user.email} · member since {memberSince}</p>
                     </div>
                 </div>
                 <div className="bento mt-[3px]">
