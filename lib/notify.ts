@@ -81,14 +81,14 @@ export async function buildWatchlistSummary(symbols: string[], title: string): P
             if (!v || (v.status !== 'entry' && v.status !== 'watch')) return null;
             return `${stockLink(s)}: ${STATUS_LABEL[v.status]}${v.quant ? ` · quant ${v.quant.score}/100` : ''} (scan of ${v.date})`;
         }))).filter(Boolean);
-        if (found.length) lines.push('', `<b>${escapeHtml(strategy.label)}: ${escapeHtml(strategy.name)}</b>`, ...found as string[]);
+        if (found.length) lines.push('', `<b>${escapeHtml(strategy.name)}</b>`, ...found as string[]);
     }
     if (STRATEGY_1.enabled) {
         const verdicts = (await Promise.all(stocks.map(async (s) => {
             const v = (await readCache<StrategySignals>(`signals:${s}`))?.value;
             return v && v.tone !== 'neutral' ? `${escapeHtml(s)}: ${escapeHtml(v.verdict)}` : null;
         }))).filter(Boolean);
-        if (verdicts.length) lines.push('', `<b>${escapeHtml(STRATEGY_1.label)}: ${escapeHtml(STRATEGY_1.name)}</b>`, ...verdicts as string[]);
+        if (verdicts.length) lines.push('', `<b>${escapeHtml(STRATEGY_1.name)}</b>`, ...verdicts as string[]);
     }
 
     const cal = (await readCache<EarningsCalendar>('earnings:calendar'))?.value;

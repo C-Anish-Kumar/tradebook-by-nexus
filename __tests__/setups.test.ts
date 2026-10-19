@@ -91,7 +91,7 @@ describe('quant score', () => {
     it('names the strategy that fired', () => {
         const msg = setupMessage('MU', base(), 'entry', STRATEGIES.golden_cross);
         expect(msg).toContain('Golden cross pullback entry');
-        expect(msg).toContain('Strategy 4');
+        expect(msg).not.toMatch(/Strategy \d/);
         expect(setupMessage('MU', base(), 'exit', STRATEGIES.volume_bounce)).toContain('High-volume bounce trade ended');
     });
 });

@@ -48,7 +48,7 @@ export async function requestSetupScan(): Promise<{ success: true } | { error: s
     }
 }
 
-export type ForwardRow = { strategy: StrategyId; label: string; name: string } & Summary;
+export type ForwardRow = { strategy: StrategyId; name: string } & Summary;
 export type ForwardTradeRow = { id: string; strategy: StrategyId; symbol: string; signalDate: string; outcome: string; r: number | null; score: number | null };
 
 /** How the scanner's entries have actually done since they were logged: every user's watchlist feeds one shared record. */
@@ -56,7 +56,7 @@ export async function getForwardTest(): Promise<{ rows: ForwardRow[]; recent: Fo
     await requireUserId();
     await connectToDatabase();
     const all = await ForwardTrade.find({}).sort({ signalDate: -1 }).limit(2000).lean();
-    const rows = scannerStrategies().map((s) => ({ strategy: s.id, label: s.label, name: s.name, ...summarize(all.filter((t) => t.strategy === s.id)) }));
+    const rows = scannerStrategies().map((s) => ({ strategy: s.id, name: s.name, ...summarize(all.filter((t) => t.strategy === s.id)) }));
     const recent = all.slice(0, 12).map((t) => ({
         id: String(t._id), strategy: t.strategy as StrategyId, symbol: t.symbol, signalDate: t.signalDate,
         outcome: t.outcome, r: typeof t.r === 'number' ? t.r : null, score: t.score ?? null,

@@ -55,7 +55,7 @@ const n2 = (n: number | null | undefined) => (n === null || n === undefined ? 'n
 /** One strategy's read of one stock, as plain facts the model can quote. */
 export function formatSetup(symbol: string, strategy: Strategy, setup: Setup): string {
     const bits = [
-        `${symbol} | ${strategy.label} ${strategy.name} | ${CHAT_STATUS[setup.status]}`,
+        `${symbol} | ${strategy.name} | ${CHAT_STATUS[setup.status]}`,
         setup.quant ? `quant score ${setup.quant.score}/100 (${setup.quant.label}${setup.quant.capped ? ', capped until validated' : ''})` : 'no quant score',
         setup.evidence.validated ? 'Validated' : 'Unvalidated',
         `regime ${setup.regime.trend ?? 'n/a'} trend, ${setup.regime.vol ?? 'n/a'} vol`,

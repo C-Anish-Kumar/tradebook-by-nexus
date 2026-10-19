@@ -294,6 +294,21 @@ export async function getNews(symbols?: string[]): Promise<MarketNewsArticle[]> 
     }
 }
 
+// One stock's latest headlines, newest first. Shared for a minute so a busy page costs one call per symbol.
+export async function getCompanyNews(symbol: string, limit = 15): Promise<MarketNewsArticle[]> {
+    if (FINNHUB_KEYS.length === 0) throw new Error('FINNHUB API key is not configured');
+    const range = getDateRange(3);
+    const url = `${FINNHUB_BASE_URL}/company-news?symbol=${encodeURIComponent(symbol)}&from=${range.from}&to=${range.to}`;
+    const articles = (await fetchJSON<RawNewsArticle[]>(url, 60)) || [];
+    // Wire stories get syndicated; keep the first copy of each headline
+    const seen = new Set<string>();
+    return articles
+        .filter((a) => validateArticle(a) && !seen.has(a.headline!.trim().toLowerCase()) && seen.add(a.headline!.trim().toLowerCase()))
+        .sort((a, b) => (b.datetime || 0) - (a.datetime || 0))
+        .slice(0, limit)
+        .map((a, i) => ({ ...formatArticle(a, true, symbol, i), id: a.id || i }));
+}
+
 export const searchStocks = cache(async (query?: string): Promise<StockWithWatchlistStatus[]> => {
     try {
         if (FINNHUB_KEYS.length === 0) {
