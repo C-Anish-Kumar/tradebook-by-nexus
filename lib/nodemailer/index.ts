@@ -5,6 +5,7 @@ import {
     STOCK_ALERT_LOWER_EMAIL_TEMPLATE,
 } from "@/lib/nodemailer/templates";
 import { escapeHtml, formatPrice } from "@/lib/utils";
+import { withMailRetry } from "@/lib/nodemailer/retry";
 
 type EmailSendResult =
     | { status: 'skipped' }
@@ -23,12 +24,16 @@ export const transporter = hasEmailConfig
             user: process.env.NODEMAILER_EMAIL!,
             pass: process.env.NODEMAILER_PASSWORD!,
         },
-        // Keep the pool small because email volume is low in this app.
-        pool: true,
-        maxConnections: 1,
-        maxMessages: 3,
+        // No pool: on Vercel a pooled connection sits idle while the function is frozen and comes back dead.
+        // A fresh connection per email costs a moment and email volume here is low.
     })
     : null;
+
+/** sendMail with retries for dropped connections. Every email in the app goes through this. */
+export const sendMail = (options: Parameters<NonNullable<typeof transporter>["sendMail"]>[0]) => {
+    if (!transporter) throw new Error('Email credentials not configured');
+    return withMailRetry(() => transporter.sendMail(options));
+};
 
 if (transporter) {
     transporter.verify((error) => {
@@ -59,7 +64,7 @@ export const sendWelcomeEmail = async ({ email, name, intro }: WelcomeEmailData)
             html: htmlTemplate,
         };
 
-        const info = await transporter.sendMail(mailOptions);
+        const info = await sendMail(mailOptions);
         console.log('✅ Welcome email sent successfully:', info.messageId);
         return { status: 'sent', messageId: info.messageId } satisfies EmailSendResult;
     } catch (error) {
@@ -98,7 +103,7 @@ export const sendStockAlertEmail = async (
             html: htmlTemplate,
         };
 
-        const info = await transporter.sendMail(mailOptions);
+        const info = await sendMail(mailOptions);
         console.log('✅ Stock alert email sent successfully:', info.messageId);
         return { status: 'sent', messageId: info.messageId } satisfies EmailSendResult;
     } catch (error) {

@@ -26,7 +26,7 @@ const FLOW = ['A user signs up, or a cron fires', 'Inngest runs the function', '
 
 const JOBS = [
     { icon: Bot, title: 'AI analysis', trigger: 'On request', body: 'Starts a TradingAgents run on the analyst service, checks on it every 30 seconds and saves the rating and report.' },
-    { icon: Mail, title: 'Welcome email', trigger: 'On sign-up', body: 'An AI-written intro tailored to the country, goal, risk and industry picked at sign-up.' },
+    { icon: Mail, title: 'Welcome email', trigger: 'On sign-up', body: 'An AI-written intro, sent when a new account is created.' },
     { icon: BarChart2, title: 'Weekly news', trigger: 'Mon 09:00', body: 'Summarises the week’s market news and sends it as a Kit broadcast.' },
     { icon: Clock, title: 'Price alerts', trigger: 'Every 5 min', body: 'Checks every active alert against Finnhub quotes and emails the owner when one fires. Realtime mode only.' },
     { icon: UserX, title: 'Re-engagement', trigger: 'Daily 10:00', body: 'Finds dormant accounts and sends a gentle nudge.' },

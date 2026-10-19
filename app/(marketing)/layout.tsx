@@ -38,7 +38,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
                         ) : (
                             <>
                                 <Link href="/sign-in" className="btn h-9 px-3 text-muted-foreground hover:text-foreground">Sign in</Link>
-                                <Link href="/sign-up" className="btn btn-primary h-9">Get started</Link>
+                                <Link href="/sign-in" className="btn btn-primary h-9">Get started</Link>
                             </>
                         )}
                     </div>

@@ -1,13 +1,6 @@
-import { Suspense } from 'react';
+import { redirect } from "next/navigation";
 
-import ResetPasswordForm from './ResetPasswordForm';
-
-const ResetPasswordPage = () => {
-    return (
-        <Suspense fallback={<div className="text-sm text-gray-400">Loading reset form...</div>}>
-            <ResetPasswordForm />
-        </Suspense>
-    );
-};
-
-export default ResetPasswordPage;
+// Email and password sign-in is gone; Google on /sign-in does sign-in and sign-up
+export default function Page() {
+    redirect("/sign-in");
+}

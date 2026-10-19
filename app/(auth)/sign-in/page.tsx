@@ -1,94 +1,14 @@
-'use client';
-
-import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
-import InputField from '@/components/forms/InputField';
-import FooterLink from '@/components/forms/FooterLink';
-import { signInWithEmail } from "@/lib/actions/auth.actions";
-import { toast } from "sonner";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import SocialAuthButtons from "@/components/forms/SocialAuthButtons";
-import React from "react";
 
-const SignIn = () => {
-    const router = useRouter()
-    const {
-        register,
-        handleSubmit,
-        formState: { errors, isSubmitting },
-    } = useForm<SignInFormData>({
-        defaultValues: {
-            email: '',
-            password: '',
-        },
-        mode: 'onBlur',
-    });
-
-    const onSubmit = async (data: SignInFormData) => {
-        try {
-            const result = await signInWithEmail(data);
-            if (result.success) {
-                router.push('/dashboard');
-                return;
-            }
-            toast.error('Sign in failed', {
-                description: result.error ?? 'Invalid email or password.',
-            });
-        } catch (e) {
-            console.error(e);
-            toast.error('Sign in failed', {
-                description: e instanceof Error ? e.message : 'Failed to sign in.'
-            })
-        }
-    }
-
+export default function SignIn() {
     return (
         <>
-            <h1 className="form-title mb-2">Welcome back</h1>
-            <p className="mb-8 text-faint">Sign in to your watchlist and alerts.</p>
-
+            <h1 className="form-title mb-2">Welcome</h1>
+            <p className="mb-8 text-faint">Sign in with your Google account to get to your watchlist and alerts. New here? The same button creates your account.</p>
             <SocialAuthButtons />
-
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                <InputField
-                    name="email"
-                    label="Email"
-                    placeholder="you@example.com"
-                    register={register}
-                    error={errors.email}
-                    validation={{
-                        required: 'Email is required',
-                        pattern: {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
-                            message: 'Please enter a valid email address'
-                        }
-                    }}
-                />
-
-                <InputField
-                    name="password"
-                    label="Password"
-                    placeholder="Enter your password"
-                    type="password"
-                    register={register}
-                    error={errors.password}
-                    validation={{ required: 'Password is required', minLength: 8 }}
-                />
-
-                <div className="flex justify-end">
-                    <Link href="/forgot-password" className="footer-link text-sm">
-                        Forgot password?
-                    </Link>
-                </div>
-
-                <Button type="submit" disabled={isSubmitting} className="yellow-btn w-full mt-5">
-                    {isSubmitting ? 'Signing In' : 'Sign In'}
-                </Button>
-
-                <FooterLink text="Don't have an account?" linkText="Create an account" href="/sign-up" />
-            </form>
+            <p className="mt-6 text-[12.5px] text-faint">
+                Signed up with an email and password before? Use Google with that same address and you&rsquo;ll land in your existing account.
+            </p>
         </>
     );
-};
-export default SignIn;
+}

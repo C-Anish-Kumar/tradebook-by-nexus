@@ -4,9 +4,7 @@ import {connectToDatabase} from "@/database/mongoose";
 import {nextCookies} from "better-auth/next-js";
 import { headers } from "next/headers";
 import { cache } from "react";
-import { sendPasswordResetEmail } from "@/lib/nodemailer/reset-password";
-import { sendVerificationEmail } from "@/lib/nodemailer/verify-email";
-import { mailConfigured } from "@/lib/mail-config";
+import { inngest } from "@/lib/inngest/client";
 
 
 type MongoDb = Parameters<typeof mongodbAdapter>[0];
@@ -25,32 +23,18 @@ const createAuth = (database: MongoDb) => betterAuth({
                 preferredIndustry: { type: "string", required: false },
             },
         },
-        emailAndPassword: {
-            enabled: true,
-            disableSignUp: false,
-            // Only when mail can actually be sent; sign-in re-sends the link to anyone not yet verified
-            requireEmailVerification: mailConfigured,
-            minPasswordLength: 8,
-            maxPasswordLength: 128,
-            autoSignIn: true,
-            sendResetPassword: async ({ user, url }) => {
-                void sendPasswordResetEmail({
-                    email: user.email,
-                    name: user.name,
-                    resetUrl: url,
-                }).catch((error) => {
-                    console.error('Failed to queue password reset email:', error);
-                });
-            },
-        },
-        emailVerification: {
-            sendOnSignUp: mailConfigured,
-            sendOnSignIn: mailConfigured,
-            autoSignInAfterVerification: true,
-            sendVerificationEmail: async ({ user, url }) => {
-                void sendVerificationEmail({ email: user.email, name: user.name, verifyUrl: url }).catch((error) => {
-                    console.error('Failed to send verification email:', error);
-                });
+        // Google is the only way in: no passwords to forget and no emails to deliver. Accounts made with a
+        // password before the switch keep their data and are attached to Google by email (linking below).
+        emailAndPassword: { enabled: false },
+        databaseHooks: {
+            user: {
+                create: {
+                    // New accounts get the AI-written welcome email (the sign-up form used to send this)
+                    after: async (user) => {
+                        await inngest.send({ name: 'app/user.created', data: { email: user.email, name: user.name } })
+                            .catch((error) => console.error('Failed to send app/user.created', error));
+                    },
+                },
             },
         },
         // Signed session cookie for 5 min: pages stop paying a MongoDB round trip per request.
@@ -58,12 +42,11 @@ const createAuth = (database: MongoDb) => betterAuth({
         session: {
             cookieCache: { enabled: true, maxAge: 5 * 60 },
         },
-        // No account linking. Sign-up doesn't verify emails, so linking a Google/GitHub identity to an
-        // existing account with the same email would let someone pre-register a victim's address and
-        // later capture their social sign-in. In Better Auth 1.3 this switch also blocks explicit
-        // linking; revisit (email verification or a newer Better Auth) when social sign-in ships.
+        // Signing in with Google attaches to an existing account with the same address, so people who signed
+        // up with a password keep their watchlist. Only Google is trusted for this: it verifies the address,
+        // and with password sign-up gone nobody can pre-register someone else's email any more.
         account: {
-            accountLinking: { enabled: false },
+            accountLinking: { enabled: true, trustedProviders: ['google'] },
         },
         // Providers stay disabled until their env vars are set
         socialProviders: {

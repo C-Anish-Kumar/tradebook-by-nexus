@@ -50,7 +50,9 @@ const SocialAuthButtons = () => {
         setPending(null);
     }
 
-    if (providers.length === 0) return null;
+    if (providers.length === 0) {
+        return <p className="rounded-lg border border-gray-600 p-4 text-sm text-gray-400">Sign-in isn&rsquo;t set up on this server yet: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.</p>;
+    }
 
     return (
         <div className="space-y-5 mb-5">
@@ -65,14 +67,9 @@ const SocialAuthButtons = () => {
                         className="h-12 border-gray-600 text-gray-400 text-base rounded-lg cursor-pointer"
                     >
                         {icon}
-                        {pending === id ? 'Redirecting' : label}
+                        {pending === id ? 'Redirecting' : `Continue with ${label}`}
                     </Button>
                 ))}
-            </div>
-            <div className="flex items-center gap-3 text-sm text-gray-500">
-                <span className="h-px flex-1 bg-gray-600" />
-                or
-                <span className="h-px flex-1 bg-gray-600" />
             </div>
         </div>
     );

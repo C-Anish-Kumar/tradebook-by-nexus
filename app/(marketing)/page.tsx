@@ -23,7 +23,7 @@ const TIERS = [
     {
         name: BRAND_NAME, price: 'Free', cadence: 'Every 15 seconds', perHour: 240,
         body: 'This site. Live quotes, price alerts and AI analysis on top of always-live TradingView charts.',
-        cta: { label: 'Get started', href: '/sign-up' },
+        cta: { label: 'Get started', href: '/sign-in' },
     },
     {
         name: 'Self-host', price: 'Free', cadence: 'Your call', perHour: 240,
@@ -47,7 +47,7 @@ const CadenceRail = ({ perHour }: { perHour: number }) => (
 
 export default async function LandingPage() {
     const session = await getSession();
-    const start = session?.user ? { href: '/dashboard', label: 'Open dashboard' } : { href: '/sign-up', label: 'Get started free' };
+    const start = session?.user ? { href: '/dashboard', label: 'Open dashboard' } : { href: '/sign-in', label: 'Get started free' };
 
     return (
         <>
