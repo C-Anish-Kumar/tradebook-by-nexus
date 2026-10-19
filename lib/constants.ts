@@ -1,6 +1,3 @@
-// Source code for this deployment (the AGPL asks network users to be offered it)
-export const REPO_URL = 'https://github.com/C-Anish-Kumar/tradebook-by-nexus';
-
 // TradingView widgets, built per market from lib/markets.ts groups
 type SymbolGroup = { title: string; symbols: [symbol: string, name: string][] };
 

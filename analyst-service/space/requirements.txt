@@ -1,1 +1,0 @@
-openstock-analyst @ git+https://github.com/C-Anish-Kumar/tradebook-by-nexus#subdirectory=analyst-service

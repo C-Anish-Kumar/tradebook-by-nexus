@@ -1,14 +1,18 @@
 import SocialAuthButtons from "@/components/forms/SocialAuthButtons";
+import { ACCESS_DENIED } from "@/lib/better-auth/access";
 
-export default function SignIn() {
+export default async function SignIn({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+    const { error } = await searchParams;
     return (
         <>
-            <h1 className="form-title mb-2">Welcome</h1>
-            <p className="mb-8 text-faint">Sign in with your Google account to get to your watchlist and alerts. New here? The same button creates your account.</p>
+            <h1 className="form-title mb-2">Sign in</h1>
+            <p className="mb-8 text-faint">Private workspace.</p>
+            {error && (
+                <p role="alert" className="mb-5 rounded-lg border border-line p-3 text-sm text-muted-foreground">
+                    {error === ACCESS_DENIED ? 'That Google account does not have access.' : 'Sign in failed. Try again.'}
+                </p>
+            )}
             <SocialAuthButtons />
-            <p className="mt-6 text-[12.5px] text-faint">
-                Signed up with an email and password before? Use Google with that same address and you&rsquo;ll land in your existing account.
-            </p>
         </>
     );
 }
