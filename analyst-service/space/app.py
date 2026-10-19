@@ -1,4 +1,4 @@
-# Hugging Face Space entry point: the service itself is installed from requirements.txt
+# Hugging Face Space entry point: the package sits next to this file (copied by space/build.py)
 import os
 
 if os.environ.get("SPACES_ZERO_GPU"):

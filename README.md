@@ -143,7 +143,7 @@ Run `npm run check-env` to see which of these your `.env` has.
 | `TELEGRAM_WEBHOOK_SECRET` | with the token: any random string (`openssl rand -hex 24`); Telegram sends it back so the webhook knows the call is genuine. After adding both, send the Inngest event `app/telegram.setup` once |
 | `TELEGRAM_BOT_USERNAME` | only if the bot's username cannot be looked up automatically |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | **required**: Google is the only way to sign in. Create an OAuth client (Web application) in Google Cloud Console with the redirect URI `<your site>/api/auth/callback/google` |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | optional extra sign-in button |
+| `ALLOWED_EMAILS` | optional, comma-separated Google addresses allowed to sign in. Default: the owner's address in `lib/better-auth/access.ts`. Everyone else is refused, and new sign-ups are blocked |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | shows a support email link on Help and Terms |
 
 The AI analyst service has its own setup guide in [`analyst-service/README.md`](analyst-service/README.md).
@@ -173,5 +173,5 @@ Apex Tradebook is a research and education tool, not financial advice. It is not
 
 ## Operations notes
 
-- **Sign-in is Google only.** Accounts created with an email and password before the switch are attached to Google automatically when their owner signs in with the same address.
+- **Sign-in is Google only, and private.** Only the addresses in `ALLOWED_EMAILS` can sign in; any other Google account is refused at sign-up and at sign-in, and an existing session for one counts as signed out. There are no public pages: `/` goes to the app and everything else asks for sign-in.
 - **Failure alerts:** in the Inngest dashboard, open Settings, then Alerts (or Notifications), and add an email for failed function runs, so a broken nightly scan does not go unnoticed.

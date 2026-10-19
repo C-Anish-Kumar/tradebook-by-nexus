@@ -5,11 +5,16 @@ import {nextCookies} from "better-auth/next-js";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { inngest } from "@/lib/inngest/client";
+import { APIError } from "better-auth/api";
+import { ObjectId } from "mongodb";
+import { ACCESS_DENIED, isAllowedEmail } from "@/lib/better-auth/access";
 
 
 type MongoDb = Parameters<typeof mongodbAdapter>[0];
 
 // Typed from the real config, so additional user fields (country, ...) show up in session types
+const denied = () => new APIError('FORBIDDEN', { code: ACCESS_DENIED, message: 'This account is not allowed to sign in.' });
+
 const createAuth = (database: MongoDb) => betterAuth({
         database: mongodbAdapter(database),
        secret: process.env.BETTER_AUTH_SECRET,
@@ -29,10 +34,27 @@ const createAuth = (database: MongoDb) => betterAuth({
         databaseHooks: {
             user: {
                 create: {
+                    // Private deployment: sign-ups from anyone but the owner are refused
+                    before: async (user) => {
+                        if (!isAllowedEmail(user.email)) throw denied();
+                    },
                     // New accounts get the AI-written welcome email (the sign-up form used to send this)
                     after: async (user) => {
                         await inngest.send({ name: 'app/user.created', data: { email: user.email, name: user.name } })
                             .catch((error) => console.error('Failed to send app/user.created', error));
+                    },
+                },
+            },
+            // Accounts created before the lock-down still exist; refuse them a session
+            session: {
+                create: {
+                    before: async (session) => {
+                        const id = session.userId;
+                        const user = await database.collection('user').findOne(
+                            { _id: (ObjectId.isValid(id) ? new ObjectId(id) : id) as ObjectId },
+                            { projection: { email: 1 } },
+                        );
+                        if (!isAllowedEmail(user?.email)) throw denied();
                     },
                 },
             },
@@ -55,11 +77,6 @@ const createAuth = (database: MongoDb) => betterAuth({
                 clientId: process.env.GOOGLE_CLIENT_ID as string,
                 clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
             },
-            github: {
-                enabled: !!process.env.GITHUB_CLIENT_ID,
-                clientId: process.env.GITHUB_CLIENT_ID as string,
-                clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-            },
         },
         plugins: [nextCookies()],
 });
@@ -81,8 +98,12 @@ export const getAuth = async () => {
 
 export const auth = await getAuth();
 
-// One session lookup per request, shared by layouts, pages and actions
-export const getSession = cache(async () => auth.api.getSession({ headers: await headers() }));
+// One session lookup per request, shared by layouts, pages and actions. A session that belongs to anyone
+// but the owner (made before the lock-down, or still in a 5-minute cookie cache) counts as signed out.
+export const getSession = cache(async () => {
+    const session = await auth.api.getSession({ headers: await headers() });
+    return session && isAllowedEmail(session.user.email) ? session : null;
+});
 
 // Server actions are public endpoints: never trust a userId sent from the client.
 export const requireUserId = async () => {

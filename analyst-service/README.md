@@ -35,20 +35,26 @@ Any other `TRADINGAGENTS_*` variable from TradingAgents works too (another provi
 
 ## Hosting on Hugging Face Spaces (free)
 
-Docker Spaces need a paid plan, but a Gradio Space runs any `app.py`, so the service installs as a package
-there and serves its own API on port 7860.
+Docker Spaces need a paid plan, but a Gradio Space runs any `app.py`, so the service runs there and
+serves its own API on port 7860. The repo is private, so the Space does not install from GitHub:
+the **Sync analyst Space** workflow (`.github/workflows/sync-space.yml`) copies this folder into it.
 
-1. https://huggingface.co/new-space → SDK **Gradio** (or **Docker**, using [`space/Dockerfile`](space/Dockerfile) as its only file), template **Blank**, hardware **CPU basic (free)**.
-2. Replace the Space's `README.md`, `app.py` and `requirements.txt` with the files in [`space/`](space/)
-   (**Files → Add file → Create a new file**, or edit each file in the browser). The README sets
-   `python_version: "3.12"`, which TradingAgents needs.
-3. **Settings → Variables and secrets**: add the secrets `ANALYST_API_KEY` and `GOOGLE_API_KEY`.
-4. The Space URL is `https://<user>-<space>.hf.space`. In Vercel set `ANALYST_SERVICE_URL` to it and
-   `ANALYST_API_KEY` to the same secret, then redeploy. For a private Space also set
-   `ANALYST_HF_TOKEN` to a Hugging Face read token.
+1. https://huggingface.co/new-space → SDK **Gradio**, template **Blank**, hardware **CPU basic (free)**,
+   visibility **Private**.
+2. Create a Hugging Face token with write access to the Space (https://huggingface.co/settings/tokens,
+   fine-grained, "Write access to contents/settings" on that Space only) and add it to this GitHub repo
+   as the Actions secret `HF_TOKEN`. If the Space isn't `Akumar90/openstock-analyst`, set the repo
+   variable `HF_SPACE` to its id.
+3. Run the workflow (**Actions → Sync analyst Space → Run workflow**). It runs `space/build.py`,
+   which puts `README.md`, `app.py`, a copy of `openstock_analyst/` and a `requirements.txt` made from
+   `pyproject.toml` into the Space, then the Space rebuilds. After that it runs on every push to `main`
+   that touches `analyst-service/`.
+4. **Settings → Variables and secrets** in the Space: add the secrets `ANALYST_API_KEY` and `GOOGLE_API_KEY`.
+5. The Space URL is `https://<user>-<space>.hf.space`. In Vercel set `ANALYST_SERVICE_URL` to it,
+   `ANALYST_API_KEY` to the same secret, and (because the Space is private) `ANALYST_HF_TOKEN` to a
+   Hugging Face **read** token, then redeploy.
 
-`requirements.txt` installs this folder from the fork's `main`; use **Settings → Factory rebuild** in the
-Space to pick up changes.
+To build the Space folder locally: `python analyst-service/space/build.py /tmp/space`.
 
 ## Running locally
 

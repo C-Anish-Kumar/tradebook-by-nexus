@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState } from "react";
-import { Github } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { signInWithSocial } from "@/lib/actions/auth.actions";
@@ -17,10 +16,9 @@ const GoogleIcon = () => (
 
 const PROVIDERS = [
     { id: 'google', label: 'Google', icon: <GoogleIcon /> },
-    { id: 'github', label: 'GitHub', icon: <Github className="size-5" /> },
 ] as const;
 
-type ProviderId = 'google' | 'github';
+type ProviderId = 'google';
 
 // The auth layout (a server component) knows which providers have keys and passes them down,
 // so pages never offer a button that can only fail.
@@ -34,7 +32,7 @@ const SocialAuthButtons = () => {
     const [pending, setPending] = useState<string | null>(null);
     const providers = PROVIDERS.filter((p) => enabled.includes(p.id));
 
-    const onClick = async (provider: 'google' | 'github') => {
+    const onClick = async (provider: ProviderId) => {
         setPending(provider);
         try {
             const result = await signInWithSocial(provider);
@@ -56,7 +54,7 @@ const SocialAuthButtons = () => {
 
     return (
         <div className="space-y-5 mb-5">
-            <div className={providers.length > 1 ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
+            <div className="grid gap-3">
                 {providers.map(({ id, label, icon }) => (
                     <Button
                         key={id}

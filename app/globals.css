@@ -104,7 +104,7 @@
     --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Legacy utility scales, repointed so older pages (about, help, terms, api-docs)
+/* Legacy utility scales, repointed so older pages
    pick up the warm palette without a rewrite. */
 @theme {
     --color-gray-50:  oklch(0.97 0.004 95);
@@ -698,27 +698,6 @@
 @layer utilities {
     .yellow-btn {
         @apply h-12 cursor-pointer rounded-[11px] bg-brand text-on-brand font-bold text-base disabled:opacity-50 hover:bg-brand-ink active:scale-[0.97] transition-[background-color,transform] duration-150;
-    }
-    .auth-layout {
-        @apply flex flex-col justify-between lg:flex-row h-dvh bg-page relative overflow-hidden;
-    }
-    .auth-logo {
-        @apply pt-6 lg:pt-8 mb-8 lg:mb-12;
-    }
-    .auth-left-section {
-        @apply w-full lg:w-[45%] lg:h-dvh px-6 lg:px-16 flex flex-col overflow-y-auto;
-    }
-    .auth-right-section {
-        @apply w-full max-lg:border-t max-lg:border-line lg:w-[55%] lg:h-[calc(100dvh-20px)] lg:m-[10px] lg:rounded-2xl bg-side px-6 py-4 md:p-6 lg:py-12 lg:px-16 flex flex-col justify-start overflow-hidden;
-    }
-    .auth-blockquote {
-        @apply text-sm md:text-xl lg:text-2xl font-semibold tracking-tight text-foreground mb-1 md:mb-6 lg:mb-8;
-    }
-    .auth-testimonial-author {
-        @apply text-xs md:text-base font-bold text-muted-foreground not-italic;
-    }
-    .auth-dashboard-preview {
-        @apply left-0 hidden w-[1024px] max-w-none lg:block pointer-events-none select-none;
     }
     .form-title {
         @apply text-3xl font-bold tracking-[-0.04em] text-foreground mb-8;

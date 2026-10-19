@@ -15,7 +15,6 @@ export const metadata = { title: 'Profile | Apex Tradebook' };
 const METHOD_LABELS: Record<string, string> = {
     credential: 'Email and password (retired)',
     google: 'Google',
-    github: 'GitHub',
 };
 
 export default async function ProfilePage() {
