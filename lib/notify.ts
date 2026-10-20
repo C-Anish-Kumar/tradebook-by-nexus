@@ -13,12 +13,15 @@ import type { EarningsCalendar } from '@/lib/market-intel';
 
 export type LinkedUser = Pick<INotificationSettings, 'userId' | 'telegramChatId' | 'prefs' | 'minScore'>;
 
+// Prefs that are on unless switched off: settings saved before the pref existed have no value for it
+const ON_UNLESS_OFF = new Set<keyof NotificationPrefs>(['screenerEntries', 'positionExits', 'screenerDaily']);
+
 /** Users with a linked Telegram chat who want this kind of message. */
 export async function linkedUsers(pref: keyof NotificationPrefs): Promise<LinkedUser[]> {
     if (!telegramEnabled) return [];
     await connectToDatabase();
     return NotificationSettings.find(
-        { telegramChatId: { $exists: true, $ne: null }, [`prefs.${pref}`]: true },
+        { telegramChatId: { $exists: true, $ne: null }, [`prefs.${pref}`]: ON_UNLESS_OFF.has(pref) ? { $ne: false } : true },
         { userId: 1, telegramChatId: 1, prefs: 1, minScore: 1 },
     ).lean();
 }

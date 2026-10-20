@@ -19,6 +19,9 @@ import { enabledStrategies } from "@/lib/strategies";
 const OPTIONS: { key: keyof NotificationPrefs; label: string; detail: string }[] = [
     { key: 'alerts', label: 'Price alerts', detail: 'The moment one of your alerts triggers' },
     { key: 'daily', label: 'Daily summary', detail: 'Your watchlist after each US market close' },
+    { key: 'screenerEntries', label: 'Screener entries', detail: "Tonight's top entries that fit your plan, per universe, above its minimum score (set on the Positions page)" },
+    { key: 'positionExits', label: 'Position exits', detail: 'When a position you marked as taken hits its stop, its strategy exit or 2R' },
+    { key: 'screenerDaily', label: 'Screener summary', detail: 'After each nightly scan: market regime, entries per universe, your positions and kill switches' },
     // One switch per strategy that is turned on; a strategy that is off never appears here
     ...enabledStrategies().map((s) => ({ key: s.telegramPref, label: s.name, detail: `${s.rules}. A fresh entry or exit on a watched stock, with its quant score.` })),
     { key: 'earnings', label: 'Earnings', detail: 'The day before a watched stock reports, then beat or miss' },

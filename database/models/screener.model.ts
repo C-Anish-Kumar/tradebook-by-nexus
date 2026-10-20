@@ -1,5 +1,6 @@
 import { Schema, model, models, type Model, type Types } from 'mongoose';
 import type { PooledEvidence, ScreenerRowData } from '@/lib/screener';
+import type { MarketRegime } from '@/lib/risk';
 
 export type ScreenerRunStatus = 'running' | 'done' | 'error';
 
@@ -25,6 +26,8 @@ export interface IScreenerRun {
     universes: Record<string, UniverseSummary>;
     rowCount: number;
     seconds?: number;
+    /** SPY against its 50- and 200-day averages on the scan date, for the regime gate. */
+    market?: MarketRegime | null;
 }
 
 const ScreenerRunSchema = new Schema<IScreenerRun>(
@@ -39,6 +42,7 @@ const ScreenerRunSchema = new Schema<IScreenerRun>(
         universes: { type: Schema.Types.Mixed, default: {} },
         rowCount: { type: Number, default: 0 },
         seconds: Number,
+        market: { type: Schema.Types.Mixed, default: null },
     },
     { versionKey: false, minimize: false },
 );

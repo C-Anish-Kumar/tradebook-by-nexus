@@ -2,6 +2,8 @@ import { inngest } from '@/lib/inngest/client';
 import { connectToDatabase } from '@/database/mongoose';
 import { ScreenerRow, ScreenerRun, type UniverseSummary } from '@/database/models/screener.model';
 import { ForwardTrade } from '@/database/models/forward-trade.model';
+import { NotificationSettings } from '@/database/models/notification.model';
+import { Position } from '@/database/models/trading.model';
 import { AnalystJobMissingError, analystEnabled, getScreenJob, startScreenJob } from '@/lib/analyst';
 import { readCache } from '@/lib/cache';
 import { evaluateTrade } from '@/lib/forward-test';
@@ -9,7 +11,13 @@ import type { EarningsCalendar } from '@/lib/market-intel';
 import { pairKey, toRows, trackList, type Signal } from '@/lib/screener';
 import type { SetupStatus } from '@/lib/setups';
 import { scannerStrategies, type StrategyId } from '@/lib/strategies';
-import { UNIVERSES } from '@/config/universes';
+import { TELEGRAM_TOP_N, UNIVERSES } from '@/config/universes';
+import { APP_URL } from '@/lib/brand';
+import { notify, stockLink } from '@/lib/notify';
+import { telegramEnabled } from '@/lib/telegram';
+import { effectiveUniverse, planEntries, positionExit, type MarketRegime } from '@/lib/risk';
+import { forwardTradesByPair, loadPlanContext } from '@/lib/risk-context';
+import { dailySummaryMessage, entriesMessage, exitMessage, type AlertPick } from '@/lib/risk-alerts';
 
 const MAX_POLLS = 75;          // 2 minutes apart: the scan gets two and a half hours
 const MAX_UNREACHABLE = 5;     // consecutive failed status checks (a busy or restarting Space) before giving up
@@ -50,9 +58,14 @@ export const runScreener = inngest.createFunction(
             const last = await ScreenerRun.findOne({ status: 'done' }).sort({ startedAt: -1 }).lean();
             const prevRows = last ? await ScreenerRow.find({ runId: last._id }, { ticker: 1, strategy: 1, universe: 1, signal: 1 }).lean() : [];
             const open = await ForwardTrade.find({ outcome: 'open', universe: { $exists: true } }, { symbol: 1, strategy: 1, universe: 1 }).lean();
+            // Positions you took are always reported, so their stops and exits are seen
+            const held = await Position.find({ status: 'open' }, { ticker: 1, strategy: 1, universe: 1 }).lean();
             const track = trackList(
                 prevRows.map((r) => ({ ticker: r.ticker, strategy: r.strategy as StrategyId, universe: r.universe, signal: r.signal as Signal })),
-                open.map((t) => ({ ticker: t.symbol, strategy: t.strategy as StrategyId, universe: t.universe! })),
+                [
+                    ...open.map((t) => ({ ticker: t.symbol, strategy: t.strategy as StrategyId, universe: t.universe! })),
+                    ...held.map((p) => ({ ticker: p.ticker, strategy: p.strategy as StrategyId, universe: p.universe })),
+                ],
             );
             const job = await startScreenJob({
                 universes: UNIVERSES.map((u) => ({ id: u.id, name: u.name, filters: u.filters, slippageBps: u.slippageBps, badges: u.badges })),
@@ -118,7 +131,10 @@ export const runScreener = inngest.createFunction(
                 universes[id] = { name: u.name, candidates: u.candidates, members: u.members, allMembers: u.all_members, validation: u.validation };
             }
             await ScreenerRun.updateOne({ _id: started.runId }, {
-                $set: { status: 'done', scanDate: result.date ?? undefined, finishedAt: new Date(), problems: result.problems, universes, rowCount: rows.length, seconds: result.seconds },
+                $set: {
+                    status: 'done', scanDate: result.date ?? undefined, finishedAt: new Date(), problems: result.problems, universes,
+                    rowCount: rows.length, seconds: result.seconds, market: result.market ?? null,
+                },
             });
 
             // Keep two months of history
@@ -161,6 +177,85 @@ export const runScreener = inngest.createFunction(
             return { opened, closed };
         });
 
-        return { runId: started.runId, tracked: started.tracked, ...saved, forward };
+        // Positions you took: tonight's close, for the Positions page and the summary
+        const positions = await step.run('positions', async () => {
+            await connectToDatabase();
+            const rows = await ScreenerRow.find({ runId: started.runId }, { ticker: 1, close: 1, scanDate: 1 }).lean();
+            const close = new Map(rows.map((r) => [r.ticker, r]));
+            let updated = 0;
+            for (const p of await Position.find({ status: 'open' }, { ticker: 1 }).lean()) {
+                const r = close.get(p.ticker);
+                if (!r) continue;
+                await Position.updateOne({ _id: p._id }, { $set: { lastClose: r.close, lastScan: r.scanDate } });
+                updated++;
+            }
+            return { updated };
+        });
+
+        const alerts = await step.run('alerts', () => sendScreenerAlerts(started.runId));
+
+        return { runId: started.runId, tracked: started.tracked, ...saved, forward, positions, alerts };
     },
 );
+
+/**
+ * Telegram after a scan, per linked user and each switchable on the Profile page: the entries that fit their plan in
+ * every universe with alerts on (above its minimum score), exits on positions they took (each reason once), and a
+ * summary. "Fits the plan" is worked out for that user: their account, caps, positions and kill switches.
+ */
+export async function sendScreenerAlerts(runId: string) {
+    if (!telegramEnabled) return { skipped: 'Telegram is not set up' };
+    await connectToDatabase();
+    const users = await NotificationSettings.find({ telegramChatId: { $exists: true, $ne: null } }, { userId: 1, telegramChatId: 1, prefs: 1 }).lean();
+    if (!users.length) return { users: 0 };
+    const run = await ScreenerRun.findById(runId).lean<{ scanDate?: string; market?: MarketRegime | null; universes?: Record<string, UniverseSummary> }>();
+    const rows = (await ScreenerRow.find({ runId }).lean()).map(({ _id, ...r }) => ({ ...r, id: String(_id) }));
+    const byPair = await forwardTradesByPair();
+    const sent = { entries: 0, exits: 0, summaries: 0 };
+
+    for (const user of users) {
+        const on = (key: 'screenerEntries' | 'positionExits' | 'screenerDaily') => user.prefs?.[key] !== false;
+        const ctx = await loadPlanContext(user.userId, run?.market, byPair);
+        const open = ctx.positionsAll.filter((p) => p.status === 'open');
+        const plan = planEntries(rows, ctx);
+        const picksIn = (universe: string, minScore = 0): AlertPick[] => rows
+            .filter((r) => r.universe === universe && r.signal === 'entry' && plan.get(r.id)?.reason === 'fits' && r.score >= minScore)
+            .sort((a, b) => b.score - a.score)
+            .map((r) => ({ row: r, plan: plan.get(r.id)! }));
+
+        if (on('screenerEntries')) {
+            for (const u of UNIVERSES) {
+                const eff = effectiveUniverse(u, ctx.settings);
+                if (!eff.telegram.enabled) continue;
+                const picks = picksIn(u.id, eff.telegram.minScore).slice(0, TELEGRAM_TOP_N);
+                if (picks.length && await notify(user, entriesMessage(u.name, picks, stockLink))) sent.entries++;
+            }
+        }
+
+        if (on('positionExits')) {
+            for (const p of open) {
+                const row = rows.find((r) => r.ticker === p.ticker && r.strategy === p.strategy);
+                const reason = positionExit(p, row);
+                if (!row || !reason || p.alerted.includes(reason)) continue;
+                if (await notify(user, exitMessage(p, reason, row.close, stockLink))) {
+                    await Position.updateOne({ _id: p.id }, { $addToSet: { alerted: reason } });
+                    sent.exits++;
+                }
+            }
+        }
+
+        if (on('screenerDaily') && run) {
+            const universes = UNIVERSES.map((u) => {
+                const inU = rows.filter((r) => r.universe === u.id && r.signal === 'entry');
+                const fits = picksIn(u.id);
+                return { name: u.name, members: run.universes?.[u.id]?.members?.length ?? 0, entries: inU.length, fits: fits.length, top: fits.slice(0, 3) };
+            });
+            const html = dailySummaryMessage({
+                date: run.scanDate ?? null, market: run.market, universes, positions: open,
+                killed: [...ctx.killed], accountKilled: ctx.accountKilled, link: stockLink, appUrl: APP_URL,
+            });
+            if (await notify(user, html)) sent.summaries++;
+        }
+    }
+    return { users: users.length, ...sent };
+}

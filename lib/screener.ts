@@ -4,9 +4,13 @@
 import { ACCOUNT, riskFor, universeById } from '@/config/universes';
 import { sizeShares, type QuantScore, type SetupStatus } from '@/lib/setups';
 import type { StrategyId } from '@/lib/strategies';
+import type { MarketRegime } from '@/lib/risk';
 
 export type Signal = 'entry' | 'watch' | 'holding' | 'exit' | 'none';
 export type Badge = { code: string; label: string };
+
+/** The chosen settings' trades over the validation sample's out-of-sample windows, in R. */
+export type BacktestStats = { trades: number; win_rate: number | null; avg_r: number | null; total_r: number | null; max_dd_r: number | null };
 
 export type PooledEvidence = {
     validated: boolean;
@@ -18,6 +22,8 @@ export type PooledEvidence = {
     trades: number | null;
     gates: Record<string, boolean>;
     sample: number;
+    /** Absent on validations cached before it existed. */
+    backtest?: BacktestStats;
 };
 
 /** One row from the analyst service's /screen result. */
@@ -49,6 +55,8 @@ export type AnalystScreenResult = {
     date: string | null;
     universes: Record<string, { name: string; candidates: number; members: string[]; all_members: number; validation: Record<string, PooledEvidence> }>;
     strategies: StrategyId[];
+    /** Absent when SPY could not be read (or from an older analyst service). */
+    market?: MarketRegime | null;
     rows: AnalystScreenRow[];
     problems: string[];
     seconds: number;
@@ -192,10 +200,10 @@ export function sortRows<T extends Pick<ScreenerRowData, 'score' | 'signal' | 't
 }
 
 /** Shares for this row under its universe's risk-per-trade, sized from the stop. Null when there is no plan. */
-export function positionFor(row: Pick<ScreenerRowData, 'universe' | 'entry' | 'stop'>, account = ACCOUNT.size) {
+export function positionFor(row: Pick<ScreenerRowData, 'universe' | 'entry' | 'stop'>, account = ACCOUNT.size, riskPctOverride?: number) {
     const u = universeById(row.universe);
     if (!u || row.entry == null || row.stop == null) return null;
-    const riskPct = riskFor(u).riskPctPerTrade;
+    const riskPct = riskPctOverride ?? riskFor(u).riskPctPerTrade;
     const size = sizeShares(account, riskPct, row.entry, row.stop);
     return size && { ...size, riskPct };
 }
