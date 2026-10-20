@@ -6,6 +6,7 @@ import AIAnalystPanel from "@/components/stocks/AIAnalystPanel";
 import StrategyPanel from "@/components/stocks/StrategyPanel";
 import { scannerStrategies, STRATEGIES, STRATEGY_1, type StrategyId } from "@/lib/strategies";
 import { getScreenerRow } from '@/lib/actions/screener.actions';
+import { getTradingSettings } from '@/lib/actions/risk.actions';
 import { positionFor, SIGNAL_LABEL } from '@/lib/screener';
 import { universeById } from '@/config/universes';
 import { STATUS_LABEL } from "@/lib/setups";
@@ -100,9 +101,9 @@ const usd = (n: number | null | undefined) => (n == null ? '–' : `$${n.toLocal
 /** Opened from a screener row: what that strategy looks at, and what last night's scan saw on this stock. */
 async function FromScreener({ symbol, strategyId }: { symbol: string; strategyId: StrategyId }) {
     const strategy = STRATEGIES[strategyId];
-    const row = await getScreenerRow(symbol, strategyId);
+    const [row, view] = await Promise.all([getScreenerRow(symbol, strategyId), getTradingSettings()]);
     const universe = row && universeById(row.universe);
-    const size = row && positionFor(row);
+    const size = row && positionFor(row, view.settings.accountSize, view.universes[row.universe]?.risk.riskPctPerTrade);
     return (
         <Panel title={`From the screener: ${strategy.name}`} sub={row ? `${universe?.name ?? row.universe} · scan of ${row.scanDate}` : 'Not in play in the latest scan'}>
             <div className="flex flex-col gap-3 p-4">

@@ -11,6 +11,11 @@ Live at **https://apex-tradebook.vercel.app**
 - **Ranked market screener** (the home page): every universe in [`config/universes.ts`](config/universes.ts) is
   built each weekday after the US close, every enabled strategy is run on every member, and each universe gets its own
   tab ranked by quant score. See [Screener](#screener)
+- **Risk and positions**: your account size and per-universe risk, position and sector caps; each night's entries
+  marked *Fits your plan* or why not (caps, market regime, kill switches); positions you record from the screener with
+  Telegram exits. See [Risk, positions and performance](#risk-positions-and-performance)
+- **Performance dashboard**: the forward test of every strategy in every universe (win rate, average R, drawdown) next
+  to its backtest, with a kill switch on live drawdown
 - **Charts that move**: TradingView candles, technicals and financials for any listed company
 - **Live quotes**: Finnhub prices refreshing every 15 seconds, shared through a cache
 - **Watchlists and alerts**: star stocks, set price targets, get an email when they cross
@@ -26,8 +31,9 @@ Live at **https://apex-tradebook.vercel.app**
 - **Macro dashboard**: a fear & greed gauge, the US Treasury yield curve and the economic calendar
 - **Earnings calendar**: upcoming reports for your watchlist with beat/miss, the week's biggest reporters,
   and a countdown on each stock page
-- **Telegram messages**: price alerts, a daily watchlist summary, trade signals (opt-in, one switch per strategy) and
-  earnings reminders, sent by your own Telegram bot (connect from the Profile page)
+- **Telegram messages**: the screener's entries that fit your plan, exits on positions you took, a nightly screener
+  summary, price alerts, a daily watchlist summary, trade signals (opt-in, one switch per strategy) and earnings
+  reminders, sent by your own Telegram bot (connect from the Profile page)
 - **Market overview**: sector heatmap, movers, top stories and sentiment from Reddit, X.com, news and Polymarket
 - **Emails**: AI-written welcome email, and a weekly news digest sent through Kit
 
@@ -57,9 +63,12 @@ How a scan works (`lib/inngest/screener.ts`, 5:20 PM New York time on weekdays, 
 4. Each member is read under every strategy on its latest daily bar. Only stocks with something in play are stored:
    **Entry**, **Watch** (near the trigger), **Holding**, or **Exit** (in play last scan, off today).
 5. Every entry is logged as a paper trade in its universe's forward-test record and judged on later daily closes.
+6. The market regime (SPY against its 50- and 200-day averages) is stored with the scan, and Telegram alerts go out
+   (see below).
 
 Columns: ticker, strategy name, signal, quant score, validated, entry, stop, 2R/3R targets, risk per share, position
-size (account x the universe's risk per trade, sized from the stop), regime, sector, scan date, and flags: other
+size (account x the universe's risk per trade, sized from the stop), plan (*Fits* or the rule it breaks, with
+**Take**), regime, sector, scan date, and flags: other
 universes the stock belongs to, earnings within 5 days, and for the under-$5 universe reverse splits, offering
 filings (S-1/S-3/424B in the last 90 days), floats under 10M shares and gaps over 20%. Clicking a row opens the stock
 page led by that strategy's "what it looks at" and the scan's numbers.
@@ -68,6 +77,38 @@ page led by that strategy's "what it looks at" and the scan's numbers.
 the screener never calls it per stock: listings come from Nasdaq and candles from Yahoo through the analyst service.
 Finnhub is used once per scan for the earnings calendar. Spreads are estimated, not quoted; real quotes come with the
 IBKR connection.
+
+## Risk, positions and performance
+
+Nothing here trades: you place orders at your broker and record them. The defaults are in
+[`config/universes.ts`](config/universes.ts); your own account size and per-universe overrides (risk per trade
+0.25-1%, max positions, sector cap, universe cap, regime gate, Telegram on/off and minimum score) are saved on the
+**Positions** page and apply at once.
+
+**Fits your plan.** Each night's entries are taken best score first into a simulated book and each one either fits
+or is turned away by the first rule it breaks: already held, the account or strategy kill switch, the market regime
+(gated universes take no new entries while SPY closes below its 200-day average), a stop too wide to buy one share
+within the risk budget, then the universe's max positions, the sector cap (across the whole account), the universe's
+exposure cap and the cash left. Taking one uses up room, so the *Fits* rows are the trades that fit together.
+Position size = account x risk % / (entry - stop), never more than the cash.
+
+**Positions.** Press **Take** on an entry after buying it, with your fill and share count; the stop and 2R target come
+from the scan. The nightly scan keeps reporting on positions you hold, updates their last close, and sends a Telegram
+message when one closes at or below its stop, its strategy's exit fires, or it reaches 2R (each once). Close it on
+the Positions page with your sale price.
+
+**Kill switches.** A strategy in a universe stops producing *Fits* once its forward test falls 6R from its best point;
+the whole account stops once your closed positions fall 10% of the account from their best. Both stay tripped until
+you reset them (Performance and Positions pages); the drawdown then counts from the reset.
+
+**Performance** (`/performance`) shows, per strategy and universe, the forward test (logged, open, closed, win rate,
+average and total R, max drawdown in R) beside the backtest (the chosen settings' trades over each validation stock's
+out-of-sample window, in R, refreshed weekly), the live-minus-backtest average R (grey under 30 closed trades), and the
+kill switch.
+
+**Telegram** (switches on the Profile page, all on by default): per universe with alerts on, the top 5 entries that
+fit your plan above its minimum score; exits on your positions; and a nightly summary (market regime, entries and fits
+per universe, your positions, kill switches). Unvalidated strategies are labelled in every message.
 
 ## Strategies
 

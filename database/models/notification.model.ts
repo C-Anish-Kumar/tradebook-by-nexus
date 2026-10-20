@@ -5,6 +5,8 @@ export type NotificationPrefs = {
     alerts: boolean; daily: boolean; signals: boolean; earnings: boolean;
     setups: boolean; maPullback: boolean; goldenCross: boolean; breakoutRetest: boolean; volumeBounce: boolean;
     rsiDip: boolean; bbSnapback: boolean; macdTrend: boolean; tdExhaustion: boolean;
+    /** Screener: tonight's entries that fit your plan, exits on positions you took, and the nightly summary. */
+    screenerEntries: boolean; positionExits: boolean; screenerDaily: boolean;
 };
 
 export interface INotificationSettings {
@@ -42,6 +44,9 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>(
             bbSnapback: { type: Boolean, default: false },
             macdTrend: { type: Boolean, default: false },
             tdExhaustion: { type: Boolean, default: false },
+            screenerEntries: { type: Boolean, default: true },
+            positionExits: { type: Boolean, default: true },
+            screenerDaily: { type: Boolean, default: true },
         },
     },
     { timestamps: true, versionKey: false }

@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { Fragment, useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Check, ListFilter, Loader2, Radar } from 'lucide-react';
+import { AlertTriangle, Check, ListFilter, Loader2, Plus, Radar } from 'lucide-react';
 import { toast } from 'sonner';
 import Panel from '@/components/Panel';
 import { requestScreenerRun, type ScreenerData } from '@/lib/actions/screener.actions';
-import { ACCOUNT, UNIVERSES, riskFor, type Universe } from '@/config/universes';
+import { takePosition } from '@/lib/actions/risk.actions';
+import { UNIVERSES, type Universe } from '@/config/universes';
 import { filterRows, positionFor, SIGNAL_LABEL, sortRows, type ScreenerFilter, type Signal } from '@/lib/screener';
+import { PLAN_LABEL, regimeLabel, regimeOpen, type PlanDecision } from '@/lib/risk';
 import { STRATEGIES, scannerStrategies, type StrategyId } from '@/lib/strategies';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +30,8 @@ const GATE_LABEL: Record<string, string> = {
 const scoreTone = (s: number) => (s >= 65 ? 'text-up' : s >= 50 ? 'text-brand-ink' : s >= 35 ? 'text-warn' : 'text-down');
 
 function UniverseHeader({ universe, data }: { universe: Universe; data: ScreenerData }) {
-    const risk = riskFor(universe);
+    const eff = data.universes[universe.id];
+    const risk = eff.risk;
     const summary = data.run?.universes[universe.id];
     return (
         <div className="flex flex-col gap-3 p-4 text-[12.5px]">
@@ -40,7 +43,9 @@ function UniverseHeader({ universe, data }: { universe: Universe; data: Screener
                 <span>Sector cap {risk.maxSectorExposurePct}%</span>
                 {risk.maxTotalExposurePct < 100 && <span>Universe cap {risk.maxTotalExposurePct}% of the account</span>}
                 <span>Slippage {universe.slippageBps} bps a side</span>
-                <span>Telegram {universe.telegram.enabled ? `on, score ${universe.telegram.minScore}+` : 'off'}</span>
+                <span>Regime gate {eff.regimeGate ? 'on' : 'off'}</span>
+                <span>Telegram {eff.telegram.enabled ? `on, score ${eff.telegram.minScore}+` : 'off'}</span>
+                <Link href="/positions" className="text-brand-ink hover:underline">Change</Link>
             </div>
             {summary && (
                 <div className="flex flex-wrap gap-2">
@@ -62,12 +67,54 @@ function UniverseHeader({ universe, data }: { universe: Universe; data: Screener
     );
 }
 
+const PLAN_SHORT: Record<PlanDecision['reason'], string> = {
+    fits: 'Fits', held: 'Held', duplicate: 'Duplicate', account_kill: 'Account stop', kill_switch: 'Kill switch', regime: 'Risk-off',
+    too_wide: 'Stop too wide', max_positions: 'Max positions', sector_cap: 'Sector cap', universe_cap: 'Universe cap', cash: 'No cash',
+};
+
+function PlanCell({ decision }: { decision: PlanDecision }) {
+    const fits = decision.reason === 'fits';
+    return <span className={cn('pill', fits ? 'is-up' : 'text-faint')} title={PLAN_LABEL[decision.reason]}>{fits && <Check />}{PLAN_SHORT[decision.reason]}</span>;
+}
+
+/** Records a trade you placed at your broker: your fill and share count. The stop and 2R target come from the scan. */
+function TakeForm({ rowId, ticker, shares, entry, stop, onDone }: { rowId: string; ticker: string; shares: number; entry: number; stop: number; onDone: () => void }) {
+    const [qty, setQty] = useState(String(shares));
+    const [price, setPrice] = useState(String(entry));
+    const [busy, setBusy] = useState(false);
+    const field = 'h-8 w-28 rounded-[8px] bg-card px-2 text-[13px] text-foreground shadow-[inset_0_0_0_1px_var(--line)] outline-none focus:shadow-[inset_0_0_0_1px_var(--brand)]';
+    const save = async () => {
+        setBusy(true);
+        const res = await takePosition({ rowId, shares: Number(qty), entry: Number(price) });
+        setBusy(false);
+        if ('error' in res) toast.error(res.error);
+        else {
+            toast.success(`${ticker} recorded. You'll get a Telegram message when it should be closed.`);
+            onDone();
+        }
+    };
+    return (
+        <div className="flex flex-wrap items-end gap-3 py-2 text-[12px] text-faint">
+            <span className="self-center text-[13px] text-foreground">Record that you bought <b>{ticker}</b>:</span>
+            <label className="flex flex-col gap-1">Shares<input inputMode="numeric" className={field} value={qty} onChange={(e) => setQty(e.target.value)} /></label>
+            <label className="flex flex-col gap-1">Your fill<input inputMode="decimal" className={field} value={price} onChange={(e) => setPrice(e.target.value)} /></label>
+            <span className="self-center">Stop {usd(stop)}</span>
+            <button type="button" className="btn btn-primary h-8" onClick={save} disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <Check />} Save position</button>
+            <span className="self-center">Nothing is ordered: place the trade at your broker first.</span>
+        </div>
+    );
+}
+
 export default function ScreenerBoard({ data }: { data: ScreenerData }) {
     const router = useRouter();
     const [tab, setTab] = useState<string>(UNIVERSES[0].id);
     const [filter, setFilter] = useState<ScreenerFilter>({});
     const [pending, start] = useTransition();
+    const [planOnly, setPlanOnly] = useState(false);
+    const [taking, setTaking] = useState<string | null>(null);
     const strategies = scannerStrategies();
+    const account = data.settings.accountSize;
+    const held = useMemo(() => new Set(data.held), [data.held]);
 
     useEffect(() => {
         try {
@@ -84,7 +131,10 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
     const universe = UNIVERSES.find((u) => u.id === tab) ?? UNIVERSES[0];
     const inTab = useMemo(() => data.rows.filter((r) => r.universe === universe.id), [data.rows, universe.id]);
     const sectors = useMemo(() => [...new Set(inTab.map((r) => r.sector).filter((s): s is string => !!s))].sort(), [inTab]);
-    const rows = useMemo(() => sortRows(filterRows(inTab, filter)), [inTab, filter]);
+    const rows = useMemo(
+        () => sortRows(filterRows(inTab, filter)).filter((r) => !planOnly || data.plan[r.id]?.reason === 'fits'),
+        [inTab, filter, planOnly, data.plan],
+    );
 
     const run = () => start(async () => {
         const res = await requestScreenerRun();
@@ -104,8 +154,12 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
                             {data.run ? <>Last scan: daily bar of <b>{data.run.scanDate ?? '–'}</b></> : 'No scan has finished yet'}
                         </span>
                         <span className="text-faint">
-                            Runs every weekday at 5:20 PM New York time. Account {usd(ACCOUNT.size)}; position sizes come from each universe&apos;s risk per trade and the stop.
+                            Runs every weekday at 5:20 PM New York time. Account {usd(account)} (<Link href="/positions" className="text-brand-ink hover:underline">change</Link>); position sizes come from each universe&apos;s risk per trade and the stop.
                         </span>
+                        {data.run && (
+                            <span className={regimeOpen(data.run.market) ? 'text-muted-foreground' : 'text-down'}>{regimeLabel(data.run.market)}</span>
+                        )}
+                        {data.accountKilled && <span className="text-down">Account kill switch is on: no entry fits your plan until you reset it on the Positions page.</span>}
                         {data.latest?.status === 'running' && <span className="text-brand-ink">A scan started {new Date(data.latest.startedAt).toLocaleString()} is still running.</span>}
                         {data.latest?.status === 'error' && <span className="text-down">The last scan failed: {data.latest.error}</span>}
                         {data.run?.problems.map((p) => <span key={p} className="text-warn">{p}</span>)}
@@ -118,11 +172,13 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
 
             <nav aria-label="Universe" className="flex flex-wrap gap-2">
                 {UNIVERSES.map((u) => {
-                    const count = data.rows.filter((r) => r.universe === u.id && r.signal === 'entry').length;
+                    const entries = data.rows.filter((r) => r.universe === u.id && r.signal === 'entry');
+                    const fits = entries.filter((r) => data.plan[r.id]?.reason === 'fits').length;
                     return (
                         <button key={u.id} type="button" onClick={() => pickTab(u.id)} aria-pressed={u.id === universe.id}
                                 className={cn('pill h-8 px-3 text-[13px]', u.id === universe.id && 'is-brand')}>
-                            {u.name}{count > 0 && <span className="num opacity-80"> · {count} entr{count === 1 ? 'y' : 'ies'}</span>}
+                            {u.name}
+                            {entries.length > 0 && <span className="num opacity-80"> · {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}, {fits} fit{fits === 1 ? 's' : ''}</span>}
                         </button>
                     );
                 })}
@@ -164,6 +220,10 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
                         <input type="checkbox" checked={!!filter.validatedOnly} onChange={(e) => set({ validatedOnly: e.target.checked || undefined })} />
                         Validated only
                     </label>
+                    <label className="flex h-9 items-center gap-2 text-[13px] text-muted-foreground">
+                        <input type="checkbox" checked={planOnly} onChange={(e) => setPlanOnly(e.target.checked)} />
+                        Fits my plan
+                    </label>
                     <span className="ml-auto self-center">{rows.length} of {inTab.length} rows</span>
                 </div>
 
@@ -182,16 +242,19 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
                                 <tr>
                                     <th>Ticker</th><th>Strategy</th><th>Signal</th><th className="is-num">Score</th><th>Validated</th>
                                     <th className="is-num">Entry</th><th className="is-num">Stop</th><th className="is-num">2R / 3R</th>
-                                    <th className="is-num">Risk/sh</th><th className="is-num">Size</th><th>Regime</th><th>Sector</th>
+                                    <th className="is-num">Risk/sh</th><th className="is-num">Size</th><th>Plan</th><th>Regime</th><th>Sector</th>
                                     <th>Scan</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rows.map((r) => {
-                                    const size = positionFor(r);
+                                    const decision = data.plan[r.id];
+                                    const size = decision ?? positionFor(r, account, data.universes[r.universe]?.risk.riskPctPerTrade);
                                     const href = `/stocks/${encodeURIComponent(r.ticker)}?strategy=${r.strategy}`;
+                                    const canTake = r.signal === 'entry' && r.stop != null && !held.has(r.ticker);
                                     return (
-                                        <tr key={r.id} className="cursor-pointer" onClick={() => router.push(href)}>
+                                        <Fragment key={r.id}>
+                                        <tr className="cursor-pointer" onClick={() => router.push(href)}>
                                             <td className="py-2">
                                                 <Link href={href} onClick={(e) => e.stopPropagation()} className="mono font-semibold text-foreground hover:text-brand-ink">{r.ticker}</Link>
                                                 {r.name && <span className="ml-2 inline-block max-w-40 truncate align-bottom text-[12px] text-faint">{r.name}</span>}
@@ -213,13 +276,31 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
                                             <td className="is-num num">{usd(r.stop)}</td>
                                             <td className="is-num num">{r.target2r == null ? '–' : `${usd(r.target2r)} / ${usd(r.target3r)}`}</td>
                                             <td className="is-num num">{usd(r.riskPerShare)}</td>
-                                            <td className="is-num num" title={size ? `Risking ${size.riskPct}% of ${usd(ACCOUNT.size)} = ${usd(size.risk)}` : undefined}>
-                                                {size ? <>{size.shares} sh <span className="text-faint">({compact(size.cost)}{size.capped ? ', cash-capped' : ''})</span></> : '–'}
+                                            <td className="is-num num" title={size ? `Risking ${size.riskPct}% of ${usd(account)} = ${usd(size.risk)}` : undefined}>
+                                                {size && size.shares > 0 ? <>{size.shares} sh <span className="text-faint">({compact(size.cost)})</span></> : '–'}
+                                            </td>
+                                            <td className="whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                                {decision ? <PlanCell decision={decision} /> : r.signal === 'entry' ? null : <span className="text-faint">–</span>}
+                                                {canTake && (
+                                                    <button type="button" className="btn btn-ghost ml-1 h-7 px-2 text-[12px]" onClick={() => setTaking(taking === r.id ? null : r.id)}>
+                                                        <Plus /> Take
+                                                    </button>
+                                                )}
+                                                {held.has(r.ticker) && r.signal !== 'entry' && <span className="pill is-brand">Holding</span>}
                                             </td>
                                             <td className="text-muted-foreground">{[r.regime.trend, r.regime.vol && `${r.regime.vol} vol`].filter(Boolean).join(', ') || '–'}</td>
                                             <td className="text-muted-foreground">{r.sector ?? '–'}</td>
                                             <td className="num text-faint">{r.scanDate}</td>
                                         </tr>
+                                        {taking === r.id && (
+                                            <tr>
+                                                <td colSpan={14} className="bg-page">
+                                                    <TakeForm rowId={r.id} ticker={r.ticker} shares={decision?.shares || size?.shares || 1} entry={r.entry ?? r.close}
+                                                              stop={r.stop!} onDone={() => { setTaking(null); router.refresh(); }} />
+                                                </td>
+                                            </tr>
+                                        )}
+                                        </Fragment>
                                     );
                                 })}
                             </tbody>
@@ -228,6 +309,9 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
                 )}
             </Panel>
 
+            <p className="px-1 text-[12px] text-faint">
+                &ldquo;Fits your plan&rdquo; takes tonight&apos;s entries best score first and keeps those that fit together within your caps, open positions, the market regime and the kill switches. &ldquo;Take&rdquo; only records a trade you placed yourself.
+            </p>
             <p className="px-1 text-[12px] text-faint">
                 Research tooling, not financial advice; nothing here trades. Scores are a checklist out of 100, capped at 69 until the strategy passes every validation gate in this universe. New strategies and universes start unvalidated: paper-trade them first.
             </p>

@@ -25,7 +25,7 @@ import pandas as pd
 import requests
 
 from openstock_analyst.aqp.backtest.engine import Costs, backtest, sharpe
-from openstock_analyst.aqp.regime.detector import detect_regimes
+from openstock_analyst.aqp.regime.detector import atr, detect_regimes
 from openstock_analyst.aqp.strategies.rules import BuyHold, MaCross
 from openstock_analyst.aqp.validation.gates import lookahead_check
 from openstock_analyst.aqp.validation.ledger import TrialLedger
@@ -47,6 +47,8 @@ DILUTIVE_FORMS = ("S-1", "S-1/A", "S-3", "S-3/A", "F-1", "F-1/A", "F-3", "F-3/A"
                   "424B4", "424B5", "424B7")
 DILUTION_DAYS = 90
 SPLIT_DAYS = 90
+MARKET_SYMBOL = "SPY"       # the market regime gate reads this index ETF
+VALIDATION_VERSION = 2      # bump when pooled_evidence's output changes, so cached validations are redone
 
 
 @dataclass
@@ -65,10 +67,49 @@ def _sample(members: list[str], n: int = SAMPLE_SIZE) -> list[str]:
     return sorted(members, key=lambda s: hashlib.md5(s.encode()).hexdigest())[:n]
 
 
+def trade_rs(df: pd.DataFrame, positions: pd.Series, costs: Costs, trail_atr: float, since=None) -> list[tuple]:
+    """Each completed long trade as (exit date, result in R), entered from `since` on.
+
+    R is the trade's net return over its initial risk: `trail_atr` x ATR(14) on the signal bar, as a fraction of the
+    fill (the next open). That is the same stop the live plan uses, so backtest R and forward-test R compare.
+    """
+    bt = backtest(df, positions, costs)
+    held = (bt.pos.values > 0)
+    a = atr(df, 14).values
+    out, i, n = [], 1, len(df)
+    while i < n:
+        if not held[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < n and held[j + 1]:
+            j += 1
+        end = j + 1                      # the exit fills at this bar's open (its return carries the overnight move)
+        if end >= n:
+            break                        # still open when the data ends
+        risk = trail_atr * a[i - 1] / float(df.open.iloc[i])
+        if (since is None or df.index[i] >= since) and np.isfinite(risk) and risk > 0:
+            ret = float((1 + bt.ret.iloc[i:end + 1]).prod() - 1)
+            out.append((df.index[end], ret / risk))
+        i = end
+    return out
+
+
+def r_stats(trades: list[tuple]) -> dict:
+    """Win rate, average R and the deepest peak-to-trough fall of cumulative R, taking trades in exit order."""
+    rs = np.array([r for _, r in sorted(trades, key=lambda t: t[0])], dtype=float)
+    if not len(rs):
+        return {"trades": 0, "win_rate": None, "avg_r": None, "total_r": None, "max_dd_r": None}
+    cum = np.cumsum(rs)
+    dd = float(np.max(np.maximum.accumulate(np.concatenate([[0.0], cum]))[1:] - cum))
+    return {"trades": int(len(rs)), "win_rate": _num(float((rs > 0).mean() * 100), 1), "avg_r": _num(float(rs.mean()), 2),
+            "total_r": _num(float(rs.sum()), 1), "max_dd_r": _num(max(dd, 0.0), 1)}
+
+
 def pooled_evidence(spec, dfs: dict[str, pd.DataFrame], costs: Costs, search_size: int) -> dict:
     """Walk-forward each sampled stock, pool the out-of-sample returns equal-weight by day, and run the gates."""
     ledger = TrialLedger()
-    oos, stress, bh, mac, last_params = [], [], [], [], []
+    oos, stress, bh, mac, last_params, folds_last = [], [], [], [], [], []
     trades, lookahead = 0, None
     for sym, raw in dfs.items():
         df = normalise(raw)
@@ -88,12 +129,13 @@ def pooled_evidence(spec, dfs: dict[str, pd.DataFrame], costs: Costs, search_siz
         p = folds[-1]["params"]
         last_params.append(tuple(sorted(p.items())))
         trades += int(backtest(df, spec.cls(**p).positions(df), costs).turnover.gt(0).sum())
+        folds_last.append((df, idx[0]))
 
     gates = {"lookahead": bool(lookahead) if lookahead is not None else False}
     if not oos:
         gates.update(oos_profitable=False, cost_stress_2x=False, beats_baselines=False, deflated_sharpe=False, min_trades=False)
         return {"validated": False, "params": None, "oos_sharpe": None, "baselines_sharpe": {}, "deflated_sharpe": None,
-                "trials": search_size, "trades": 0, "gates": gates, "sample": 0}
+                "trials": search_size, "trades": 0, "gates": gates, "sample": 0, "backtest": r_stats([])}
 
     pool = lambda parts: pd.concat(parts, axis=1).mean(axis=1).dropna()  # noqa: E731
     p_oos, p_stress, p_bh, p_mac = pool(oos), pool(stress), pool(bh), pool(mac)
@@ -109,6 +151,10 @@ def pooled_evidence(spec, dfs: dict[str, pd.DataFrame], costs: Costs, search_siz
         min_trades=bool(trades >= MIN_POOLED_TRADES),
     )
     params = dict(Counter(last_params).most_common(1)[0][0])
+    # Trade-by-trade record of the chosen settings over each stock's out-of-sample window, in R, for the
+    # dashboard's live-vs-backtest comparison (the settings were picked on earlier data, so this is close to OOS)
+    full = {**getattr(spec.cls, "defaults", {}), **params}
+    bt_trades = [t for df, since in folds_last for t in trade_rs(df, spec.cls(**params).positions(df), costs, full["trail_atr"], since)]
     return {
         "validated": all(gates.values()),
         "params": params,
@@ -119,11 +165,13 @@ def pooled_evidence(spec, dfs: dict[str, pd.DataFrame], costs: Costs, search_siz
         "trades": trades,
         "gates": gates,
         "sample": len(oos),
+        "backtest": r_stats(bt_trades),
     }
 
 
 def _validation_key(u: UniverseSpec, strategy: str, search_size: int) -> str:
-    raw = json.dumps([u.id, u.filters.__dict__, u.slippage_bps, strategy, search_size, SPECS[strategy].grid], sort_keys=True, default=str)
+    raw = json.dumps([VALIDATION_VERSION, u.id, u.filters.__dict__, u.slippage_bps, strategy, search_size, SPECS[strategy].grid],
+                     sort_keys=True, default=str)
     return hashlib.sha1(raw.encode()).hexdigest()[:16]
 
 
@@ -207,6 +255,20 @@ def float_badge(symbol: str) -> dict | None:
 
 
 # ---------------------------------------------------------------- the scan
+
+def market_regime(symbol: str = MARKET_SYMBOL) -> dict | None:
+    """The broad market's trend, for the app's regime gate: the index ETF against its 50- and 200-day averages."""
+    raw = load_daily([symbol], "2y").get(symbol)
+    if raw is None:
+        return None
+    c = normalise(raw).close
+    if len(c) < 200:
+        return None
+    s50, s200 = float(c.rolling(50).mean().iloc[-1]), float(c.rolling(200).mean().iloc[-1])
+    last = float(c.iloc[-1])
+    return {"symbol": symbol, "date": c.index[-1].date().isoformat(), "close": _num(last, 2), "sma50": _num(s50, 2),
+            "sma200": _num(s200, 2), "above_200": bool(last > s200), "trend_up": bool(s50 > s200)}
+
 
 def json_safe(o):
     """The result goes out as JSON, which has no NaN: non-finite floats become None, numpy scalars plain Python.
@@ -292,6 +354,14 @@ def run_screen(universes: list[UniverseSpec], strategies: list[str], sec_identit
                 _store_validation(need[sid], ev)
             validation[u.id][sid] = ev
 
+    try:
+        market = market_regime()
+        if market is None:
+            problems.append(f"No {MARKET_SYMBOL} history, so the market regime gate has nothing to read")
+    except Exception as e:  # noqa: BLE001 - the gate falls back to open; the scan itself must not fail
+        market = None
+        problems.append(f"Market regime ({MARKET_SYMBOL}) could not be read: {e}")
+
     progress("signals")
     rows: list[dict] = []
     # Members under every strategy, then tracked trades whose stock is no longer in any universe
@@ -358,6 +428,7 @@ def run_screen(universes: list[UniverseSpec], strategies: list[str], sec_identit
             } for u in universes
         },
         "strategies": strategies,
+        "market": market,
         "rows": rows,
         "problems": problems,
         "seconds": round(time.time() - started, 1),

@@ -180,3 +180,49 @@ def test_unusual_volume_prefilter_needs_a_loud_day():
     assert not passes_listing(quiet, f, None, "Q")
     assert passes_listing(loud, f, None, "L")
     assert passes_listing(quiet, Filters(min_avg_dollar_volume=5e6), None, "Q")   # without the volume filter, $6M is plenty
+
+
+def test_trade_rs_measures_each_trade_against_its_initial_risk():
+    df = candles(300, seed=7, price=50.0)
+    pos = pd.Series(0.0, index=df.index)
+    pos.iloc[100:120] = 1.0                       # one 20-bar trade
+    pos.iloc[200:210] = 1.0                       # and another
+    trades = screener.trade_rs(df, pos, Costs(0, 0), trail_atr=3.0)
+    assert len(trades) == 2
+    exit_day, r = trades[0]
+    assert exit_day == df.index[121]              # decided flat at bar 120's close, filled at bar 121's open
+    entry = df.open.iloc[101]
+    exit_px = df.open.iloc[121]
+    risk = 3.0 * float(screener.atr(df, 14).iloc[100]) / entry
+    # the engine adds each bar's overnight and intraday moves rather than compounding them, so allow a hair
+    assert r == pytest.approx((exit_px / entry - 1) / risk, rel=5e-3)
+    assert screener.trade_rs(df, pos, Costs(0, 0), 3.0, since=df.index[150]) == trades[1:]
+    still_open = pos.copy()
+    still_open.iloc[-5:] = 1.0
+    assert len(screener.trade_rs(df, still_open, Costs(0, 0), 3.0)) == 2   # the unfinished one is not counted
+
+
+def test_r_stats_drawdown_in_exit_order():
+    d = pd.Timestamp("2024-01-01")
+    trades = [(d + pd.Timedelta(days=i), r) for i, r in enumerate([2.0, -1.0, -1.0, -1.0, 3.0])]
+    s = screener.r_stats(list(reversed(trades)))
+    assert s == {"trades": 5, "win_rate": 40.0, "avg_r": 0.4, "total_r": 2.0, "max_dd_r": 3.0}
+    assert screener.r_stats([])["avg_r"] is None
+
+
+def test_pooled_evidence_reports_backtest_trades():
+    dfs = {f"T{i}": make_ohlcv(900, seed=20 + i, freq="B") for i in range(3)}
+    ev = screener.pooled_evidence(SPECS["ma_pullback"], dfs, Costs(2, 5), 8)
+    bt = ev["backtest"]
+    assert set(bt) == {"trades", "win_rate", "avg_r", "total_r", "max_dd_r"}
+    assert bt["trades"] >= 0 and (bt["trades"] == 0 or bt["max_dd_r"] >= 0)
+
+
+def test_market_regime_reads_spy(monkeypatch):
+    up = candles(300, seed=3, price=500.0)
+    up["close"] = np.linspace(400, 500, len(up))
+    monkeypatch.setattr(screener, "load_daily", lambda wanted, period, **kw: {"SPY": up} if "SPY" in wanted else {})
+    m = screener.market_regime()
+    assert m["symbol"] == "SPY" and m["above_200"] and m["trend_up"] and m["close"] == pytest.approx(500.0)
+    monkeypatch.setattr(screener, "load_daily", lambda wanted, period, **kw: {})
+    assert screener.market_regime() is None

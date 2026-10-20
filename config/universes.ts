@@ -7,6 +7,9 @@
 //
 // A stock that belongs to several universes appears once, in the first one listed here, tagged with the others.
 // Keep the list to about 3-4: every extra universe adds candles to download and strategies to validate.
+//
+// Everything here is a default: the account size and each universe's risk, regime gate and Telegram settings can be
+// overridden per user on the Positions page (stored in TradingSettings), without a deploy.
 
 export type UniverseId = 'large_cap' | 'unusual_volume' | 'under_5';
 
@@ -54,18 +57,33 @@ export type Universe = {
     slippageBps: number;
     /** Overrides for DEFAULT_RISK. */
     risk?: Partial<RiskSettings>;
+    /** Only take new entries while the broad market (SPY) closes above its 200-day average. Exits are always reported. */
+    regimeGate: boolean;
     /** Telegram alerts for new top-ranked entries: off, or on above a minimum quant score. */
     telegram: { enabled: boolean; minScore: number };
     /** Small-cap warning badges: reverse split, offering/dilution filings, low float, big gaps. */
     badges: boolean;
 };
 
-/** Your trading account. Position sizes on the screener use this. */
+/** Your trading account. Position sizes on the screener use this unless you set your own on the Positions page. */
 export const ACCOUNT = {
     size: 10_000,
     /** Typical hold, in trading days: 2-3 weeks. All strategies run on daily candles. */
     holdDays: { min: 10, max: 15 },
 };
+
+/** The range the Positions page accepts for risk per trade, in % of the account. */
+export const RISK_PCT_LIMITS = { min: 0.25, max: 1 };
+
+/**
+ * Kill switches. A strategy in a universe stops producing takeable entries once its forward test falls this many R
+ * from its best point; the whole account stops once your own closed positions fall this % of the account from
+ * their best. Both stay tripped until you reset them on the Performance or Positions page.
+ */
+export const KILL_SWITCH = { strategyDrawdownR: 6, accountDrawdownPct: 10 };
+
+/** Most entries listed per universe in one Telegram alert. */
+export const TELEGRAM_TOP_N = 5;
 
 export const DEFAULT_RISK: RiskSettings = {
     riskPctPerTrade: 0.75,
@@ -81,6 +99,7 @@ export const UNIVERSES: Universe[] = [
         description: 'S&P 500 and Nasdaq-100 members trading at least $20M a day, priced $5 or more',
         filters: { indexes: ['sp500', 'ndx'], price: { min: 5 }, minAvgDollarVolume: 20_000_000 },
         slippageBps: 5,
+        regimeGate: true,
         telegram: { enabled: true, minScore: 60 },
         badges: false,
     },
@@ -96,6 +115,7 @@ export const UNIVERSES: Universe[] = [
         },
         slippageBps: 15,
         risk: { riskPctPerTrade: 0.5, maxOpenPositions: 3 },
+        regimeGate: true,
         telegram: { enabled: true, minScore: 65 },
         badges: false,
     },
@@ -111,6 +131,7 @@ export const UNIVERSES: Universe[] = [
         },
         slippageBps: 40,
         risk: { riskPctPerTrade: 0.35, maxOpenPositions: 2, maxTotalExposurePct: 25 },
+        regimeGate: true,
         telegram: { enabled: false, minScore: 70 },
         badges: true,
     },

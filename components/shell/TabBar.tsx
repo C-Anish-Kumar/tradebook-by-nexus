@@ -14,6 +14,8 @@ const MAX_TABS = 12;
 
 const PAGE_LABELS: Record<string, string> = {
     '/': 'Screener',
+    '/positions': 'Positions',
+    '/performance': 'Performance',
     '/dashboard': 'Market',
     '/watchlist': 'Watchlist',
     '/setups': 'Setups',

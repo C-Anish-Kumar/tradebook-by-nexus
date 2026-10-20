@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Crosshair, LayoutDashboard, ListFilter, LogOut, MessageSquare, Search, Star } from "lucide-react";
+import { Briefcase, Crosshair, Gauge, LayoutDashboard, ListFilter, LogOut, MessageSquare, Search, Star } from "lucide-react";
 import { openSearch } from "@/components/SearchCommand";
 import { signOut } from "@/lib/actions/auth.actions";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,12 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
             <nav className="flex flex-col gap-0.5">
                 <Link href="/" className={cn('side-item', pathname === '/' && 'is-active')}>
                     <ListFilter /> Screener
+                </Link>
+                <Link href="/positions" className={cn('side-item', pathname === '/positions' && 'is-active')}>
+                    <Briefcase /> Positions
+                </Link>
+                <Link href="/performance" className={cn('side-item', pathname === '/performance' && 'is-active')}>
+                    <Gauge /> Performance
                 </Link>
                 <Link href="/dashboard" className={cn('side-item', pathname === '/dashboard' && 'is-active')}>
                     <LayoutDashboard /> Market
