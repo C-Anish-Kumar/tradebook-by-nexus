@@ -4,13 +4,16 @@
 //
 //   EMA + Supertrend: a fixed rule checklist on the stock page. Switched off for now.
 //   Trend breakout: a regime-gated breakout scan with walk-forward evidence and a 0-100 quant score.
-//   The rest: daily-chart setups from the TEDucation 2.0 knowledge base, scanned and scored the same way.
+//   MA pullback to High-volume bounce: daily-chart setups from the TEDucation 2.0 knowledge base.
+//   Oversold dip to TD exhaustion: ideas from freqtrade-strategies, re-built for daily candles and swing holds.
+//   All of them are scanned, validated and scored the same way, and start unvalidated.
 //
 // Users only ever see `name`, `rules` and `looksAt`, so keep them in plain words; `looksAt` mirrors what the
 // analyst service actually checks (analyst-service/openstock_analyst/aqp/strategies).
 import type { NotificationPrefs } from '@/database/models/notification.model';
 
-export type StrategyId = 'ema_supertrend' | 'breakout' | 'ma_pullback' | 'golden_cross' | 'breakout_retest' | 'volume_bounce';
+export type StrategyId = 'ema_supertrend' | 'breakout' | 'ma_pullback' | 'golden_cross' | 'breakout_retest' | 'volume_bounce'
+    | 'rsi_dip' | 'bb_snapback' | 'macd_trend' | 'td_exhaustion';
 
 export type Strategy = {
     id: StrategyId;
@@ -111,6 +114,62 @@ export const STRATEGIES: Record<StrategyId, Strategy> = {
         enabled: true,
         scanner: true,
         telegramPref: 'volumeBounce',
+    },
+    rsi_dip: {
+        id: 'rsi_dip',
+        name: 'Oversold dip in an uptrend',
+        rules: 'In a stock that is still in a long-term uptrend, buy a sharp two-day sell-off and sell the snap-back',
+        looksAt: [
+            'Trend: the close is above the 200-day average',
+            'Dip: the 2-day RSI closes under 5-10 (two or three hard down days in a row)',
+            'Exit: a close back above the 5-day average or the 2-day RSI above 70, usually within days',
+            'Stop: a few ATRs (average daily ranges) below the highest close since entry',
+        ],
+        enabled: true,
+        scanner: true,
+        telegramPref: 'rsiDip',
+    },
+    bb_snapback: {
+        id: 'bb_snapback',
+        name: 'Bollinger band snap-back',
+        rules: 'In an uptrend, buy the first close back inside the lower Bollinger band after a stretch below it',
+        looksAt: [
+            'Trend: the close is above the 200-day average',
+            'Stretch: a close below the lower band (20-day average minus 2-2.5 standard deviations), with the 14-day RSI under 35',
+            'Entry: the first close back above the lower band',
+            'Exit: price reaches the middle band (the 20-day average); stop just under the low of the dip',
+        ],
+        enabled: true,
+        scanner: true,
+        telegramPref: 'bbSnapback',
+    },
+    macd_trend: {
+        id: 'macd_trend',
+        name: 'MACD trend continuation',
+        rules: 'In an established uptrend, buy when MACD turns back up above zero and ride the trend for weeks',
+        looksAt: [
+            'Trend: the 50-day EMA is above the 200-day EMA and price is above the 50',
+            'Momentum: MACD (12, 26, 9) crosses above its signal line while above zero',
+            'Strength: ADX above 15-22 with buyers (+DI) ahead of sellers (-DI)',
+            'Exit: MACD crosses back below its signal line, or the trailing ATR stop',
+        ],
+        enabled: true,
+        scanner: true,
+        telegramPref: 'macdTrend',
+    },
+    td_exhaustion: {
+        id: 'td_exhaustion',
+        name: 'TD Sequential exhaustion',
+        rules: 'Buy when a pullback in an uptrend has run nine bars in a row and looks exhausted',
+        looksAt: [
+            'Count: nine closes in a row, each below the close four bars earlier (a TD buy setup)',
+            'Perfection: the low of bar 8 or 9 undercuts the lows of bars 6 and 7',
+            'Trend: the stock is still above its 200-day average',
+            "Exit: a completed TD sell setup (nine closes above the close four bars earlier); stop under the setup's low",
+        ],
+        enabled: true,
+        scanner: true,
+        telegramPref: 'tdExhaustion',
     },
 };
 

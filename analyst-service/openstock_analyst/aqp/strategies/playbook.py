@@ -47,11 +47,13 @@ class PlaybookStrategy(Strategy):
         return self.params.get(key, self.defaults[key])
 
     def _signals(self, df: pd.DataFrame) -> dict[str, np.ndarray]:
-        """entry (bool), entry_stop, dyn_stop and watch (price where an entry would trigger), each one value per bar."""
+        """entry (bool), entry_stop, dyn_stop and watch (price where an entry would trigger), each one value per bar.
+        An optional `exit` (bool) closes the trade at that bar's close even if no stop is hit (profit-taking rules)."""
         raise NotImplementedError
 
     def _scan(self, df: pd.DataFrame):
         sig = self._signals(df)
+        exit_rule = sig.get("exit")
         a, c = atr(df, 14).values, df.close.values
         k, n = self.p("trail_atr"), len(df)
         pos, stop = np.zeros(n), _nan(n)
@@ -66,7 +68,7 @@ class PlaybookStrategy(Strategy):
                     s = max(s, fixed)
                 if not np.isnan(sig["dyn_stop"][i]):
                     s = max(s, sig["dyn_stop"][i])
-                if c[i] < s:
+                if c[i] < s or (exit_rule is not None and exit_rule[i]):
                     in_pos = False
                 else:
                     stop[i] = s
@@ -200,9 +202,138 @@ class VolumeBounce(PlaybookStrategy):
         return {"entry": entry, "entry_stop": (l - 0.1 * a).values, "dyn_stop": _nan(n), "watch": _nan(n)}
 
 
+# ---------------------------------------------------------------- ideas adapted from freqtrade-strategies
+# Re-implemented for daily candles and long/flat swing holds (days to weeks); the originals are crypto, 5m-4h.
+
+def rsi(close: pd.Series, n: int) -> pd.Series:
+    """Wilder's RSI, causal."""
+    d = close.diff()
+    up = d.clip(lower=0).ewm(alpha=1 / n, adjust=False, min_periods=n).mean()
+    dn = (-d.clip(upper=0)).ewm(alpha=1 / n, adjust=False, min_periods=n).mean()
+    return 100 - 100 / (1 + up / dn.replace(0, np.nan))
+
+
+def directional(df: pd.DataFrame, n: int = 14) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """(+DI, -DI, ADX), causal, Wilder smoothing."""
+    up, dn = df.high.diff(), -df.low.diff()
+    plus = pd.Series(np.where((up > dn) & (up > 0), up, 0.0), index=df.index)
+    minus = pd.Series(np.where((dn > up) & (dn > 0), dn, 0.0), index=df.index)
+    a = atr(df, n)
+    pdi = 100 * plus.ewm(alpha=1 / n, adjust=False, min_periods=n).mean() / a
+    mdi = 100 * minus.ewm(alpha=1 / n, adjust=False, min_periods=n).mean() / a
+    dx = 100 * (pdi - mdi).abs() / (pdi + mdi).replace(0, np.nan)
+    return pdi, mdi, dx.ewm(alpha=1 / n, adjust=False, min_periods=n).mean()
+
+
+class RsiDip(PlaybookStrategy):
+    """Oversold dip in an uptrend (from BbandRsi / Strategy002 / MultiRSI's RSI mean-reversion).
+
+    Trend: close above the 200-day average. Entry: the 2-day RSI closes under rsi_max. Exit: a close above the 5-day
+    average or the 2-day RSI back above exit_rsi (the snap-back happened), else the ATR trail.
+    """
+
+    name = "rsi_dip"
+    defaults = {"rsi_n": 2, "rsi_max": 10.0, "trend_n": 200, "exit_ma": 5, "exit_rsi": 70.0, "trail_atr": 3.0}
+
+    def _signals(self, df):
+        c, n = df.close, len(df)
+        r = rsi(c, self.p("rsi_n"))
+        trend = c > c.rolling(self.p("trend_n")).mean()
+        entry = (trend & (r < self.p("rsi_max"))).fillna(False).values
+        exit_ = ((c > c.rolling(self.p("exit_ma")).mean()) | (r > self.p("exit_rsi"))).fillna(False).values
+        return {"entry": entry, "entry_stop": _nan(n), "dyn_stop": _nan(n), "watch": _nan(n), "exit": exit_}
+
+
+class BollingerSnapBack(PlaybookStrategy):
+    """Bollinger band snap-back (from Low_BB / Bandtastic's lower-band reversion).
+
+    In an uptrend (close above the 200-day average), price closes below the lower band (20-day, k sigma), then the
+    first close back inside it is the entry, provided the 14-day RSI dipped under rsi_max on the way down. Stop just
+    under the lowest low of the dip; exit at the middle band.
+    """
+
+    name = "bb_snapback"
+    defaults = {"bb_n": 20, "bb_k": 2.0, "rsi_max": 35.0, "trend_n": 200, "lookback": 3, "trail_atr": 3.0}
+
+    def _signals(self, df):
+        c, n, a = df.close, len(df), atr(df, 14)
+        mid = c.rolling(self.p("bb_n")).mean()
+        lower = mid - self.p("bb_k") * c.rolling(self.p("bb_n")).std()
+        trend = c > c.rolling(self.p("trend_n")).mean()
+        lb = self.p("lookback")
+        was_below = (c < lower).shift(1).fillna(False).astype(bool)
+        dipped = rsi(c, 14).rolling(lb).min() < self.p("rsi_max")
+        entry = (trend & was_below & (c > lower) & dipped).fillna(False).values
+        dip_low = df.low.rolling(lb + 1).min() - 0.1 * a
+        watch = np.where((trend & (c < lower)).fillna(False).values, lower.values, np.nan)
+        exit_ = (c >= mid).fillna(False).values
+        return {"entry": entry, "entry_stop": dip_low.values, "dyn_stop": _nan(n), "watch": watch, "exit": exit_}
+
+
+class MacdTrend(PlaybookStrategy):
+    """MACD trend continuation (from hlhb / AwesomeMacd / AdxSmas's MACD and EMA trend filters).
+
+    Trend: 50-day EMA above the 200-day EMA and close above the 50. Entry: MACD (12, 26, 9) crosses above its signal
+    line while above zero, with ADX over adx_min and +DI over -DI. Exit: MACD crosses back below its signal, or the
+    ATR trail.
+    """
+
+    name = "macd_trend"
+    defaults = {"fast": 12, "slow": 26, "signal": 9, "adx_min": 20.0, "trail_atr": 3.0}
+
+    def _signals(self, df):
+        c, n = df.close, len(df)
+        e50, e200 = c.ewm(span=50, adjust=False).mean(), c.ewm(span=200, adjust=False, min_periods=200).mean()
+        macd = c.ewm(span=self.p("fast"), adjust=False).mean() - c.ewm(span=self.p("slow"), adjust=False).mean()
+        sig = macd.ewm(span=self.p("signal"), adjust=False).mean()
+        pdi, mdi, x = directional(df)
+        trend = (e50 > e200) & (c > e50) & (x > self.p("adx_min")) & (pdi > mdi)
+        cross_up = (macd > sig) & (macd.shift(1) <= sig.shift(1))
+        entry = (trend & cross_up & (macd > 0)).fillna(False).values
+        exit_ = ((macd < sig) & (macd.shift(1) >= sig.shift(1))).fillna(False).values
+        return {"entry": entry, "entry_stop": _nan(n), "dyn_stop": _nan(n), "watch": _nan(n), "exit": exit_}
+
+
+def td_count(cond: pd.Series) -> np.ndarray:
+    """Consecutive bars where `cond` holds (resets to 0 when it fails)."""
+    out, k = np.zeros(len(cond)), 0
+    for i, v in enumerate(cond.values):
+        k = k + 1 if v else 0
+        out[i] = k
+    return out
+
+
+class TdExhaustion(PlaybookStrategy):
+    """TD Sequential exhaustion (from TDSequentialStrategy's 9-count setup).
+
+    A buy setup is nine consecutive closes below the close four bars earlier. It counts when "perfected" (the low of
+    bar 8 or 9 undercuts the lows of bars 6 and 7) and the stock is still above its 200-day average. Entry on the
+    ninth bar; stop under the setup's lowest low; exit when a sell setup (nine closes above the close four bars
+    earlier) completes, or the ATR trail.
+    """
+
+    name = "td_exhaustion"
+    defaults = {"trend_n": 200, "trail_atr": 3.5}
+
+    def _signals(self, df):
+        c, l, n, a = df.close, df.low, len(df), atr(df, 14)
+        down = td_count(c < c.shift(4))
+        up = td_count(c > c.shift(4))
+        low67 = np.minimum(l.shift(2), l.shift(3))                       # bars 6 and 7 when this bar is 9
+        perfect = (np.minimum(l, l.shift(1)) <= low67).fillna(False).values
+        trend = (c > c.rolling(self.p("trend_n")).mean()).fillna(False).values
+        entry = (down == 9) & perfect & trend
+        entry_stop = (l.rolling(9).min() - 0.1 * a).values
+        return {"entry": entry, "entry_stop": entry_stop, "dyn_stop": _nan(n), "watch": _nan(n), "exit": up == 9}
+
+
 PLAYBOOK = {
     "ma_pullback": Ma20x50Pullback,
     "golden_cross": GoldenCrossPullback,
     "breakout_retest": BreakoutRetest,
     "volume_bounce": VolumeBounce,
+    "rsi_dip": RsiDip,
+    "bb_snapback": BollingerSnapBack,
+    "macd_trend": MacdTrend,
+    "td_exhaustion": TdExhaustion,
 }

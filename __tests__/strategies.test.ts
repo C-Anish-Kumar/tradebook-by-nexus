@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { enabledStrategies, scannerStrategies, setupCacheKey, setupStateKey, STRATEGIES, STRATEGY_1, STRATEGY_2 } from '@/lib/strategies';
 
 describe('strategy registry', () => {
     it('runs the trend breakout and the playbook strategies, with EMA + Supertrend off', () => {
-        expect(enabledStrategies().map((s) => s.id)).toEqual(['breakout', 'ma_pullback', 'golden_cross', 'breakout_retest', 'volume_bounce']);
+        expect(enabledStrategies().map((s) => s.id)).toEqual([
+            'breakout', 'ma_pullback', 'golden_cross', 'breakout_retest', 'volume_bounce',
+            'rsi_dip', 'bb_snapback', 'macd_trend', 'td_exhaustion',
+        ]);
         expect(STRATEGY_1.enabled).toBe(false);
         expect(STRATEGY_2.enabled).toBe(true);
     });
@@ -16,6 +20,11 @@ describe('strategy registry', () => {
             expect(s.name).not.toMatch(/^strategy\s*\d/i);
             expect(s.looksAt.length).toBeGreaterThan(1);
         }
+    });
+
+    it('has an analyst-service spec for every scanner, so the screener can run it', () => {
+        const specs = readFileSync('analyst-service/openstock_analyst/setups.py', 'utf8');
+        for (const s of scannerStrategies()) expect(specs).toContain(`"${s.id}": `);
     });
 
     it('only lists enabled scanners on the Setups page', () => {

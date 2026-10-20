@@ -12,6 +12,7 @@ export type TelegramStatus = { enabled: boolean; connected: boolean; name?: stri
 const DEFAULT_PREFS: NotificationPrefs = {
     alerts: true, daily: true, signals: true, earnings: true,
     setups: false, maPullback: false, goldenCross: false, breakoutRetest: false, volumeBounce: false,
+    rsiDip: false, bbSnapback: false, macdTrend: false, tdExhaustion: false,
 };
 const PREF_KEYS = Object.keys(DEFAULT_PREFS) as (keyof NotificationPrefs)[];
 

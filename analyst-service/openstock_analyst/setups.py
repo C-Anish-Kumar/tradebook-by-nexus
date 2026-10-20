@@ -72,6 +72,19 @@ SPECS: dict[str, Spec] = {
     "volume_bounce": _playbook_spec(
         "volume_bounce", {"vol_mult": [1.5, 2.0], "support_n": [20, 50], "trail_atr": [2.5, 3.5]}, "high", False,
         lambda p: f"close below the signal candle's low, or below {_trail(p)}"),
+    # Adapted from freqtrade-strategies (see aqp/strategies/playbook.py); new, so unvalidated until they earn it
+    "rsi_dip": _playbook_spec(
+        "rsi_dip", {"rsi_max": [5.0, 10.0], "trail_atr": [2.5, 3.5]}, "low", False,
+        lambda p: f"close above the {p['exit_ma']}-day average or {p['rsi_n']}-day RSI above {p['exit_rsi']:g}, or below {_trail(p)}"),
+    "bb_snapback": _playbook_spec(
+        "bb_snapback", {"bb_k": [2.0, 2.5], "trail_atr": [2.5, 3.5]}, "low", False,
+        lambda p: f"close at the middle band ({p['bb_n']}-day average), or below the dip's low, or below {_trail(p)}"),
+    "macd_trend": _playbook_spec(
+        "macd_trend", {"adx_min": [15.0, 22.0], "trail_atr": [3.0, 4.0]}, "high", True,
+        lambda p: f"MACD crosses back below its signal line, or close below {_trail(p)}"),
+    "td_exhaustion": _playbook_spec(
+        "td_exhaustion", {"trail_atr": [3.0, 4.0]}, "low", False,
+        lambda p: f"a completed TD sell setup (nine closes above the close four bars earlier), the setup low, or {_trail(p)}"),
 }
 
 
