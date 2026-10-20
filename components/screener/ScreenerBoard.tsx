@@ -110,7 +110,7 @@ export default function ScreenerBoard({ data }: { data: ScreenerData }) {
                         {data.latest?.status === 'error' && <span className="text-down">The last scan failed: {data.latest.error}</span>}
                         {data.run?.problems.map((p) => <span key={p} className="text-warn">{p}</span>)}
                     </div>
-                    <button type="button" onClick={run} disabled={pending || data.latest?.status === 'running'} className="btn btn-primary ml-auto">
+                    <button type="button" onClick={run} disabled={pending} className="btn btn-primary ml-auto">
                         {pending ? <Loader2 className="animate-spin" /> : <Radar />} Run scan now
                     </button>
                 </div>

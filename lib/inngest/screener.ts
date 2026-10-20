@@ -12,6 +12,7 @@ import { scannerStrategies, type StrategyId } from '@/lib/strategies';
 import { UNIVERSES } from '@/config/universes';
 
 const MAX_POLLS = 75;          // 2 minutes apart: the scan gets two and a half hours
+const MAX_UNREACHABLE = 5;     // consecutive failed status checks (a busy or restarting Space) before giving up
 const KEEP_DAYS = 60;          // older runs and their rows are deleted
 
 const fail = async (runId: string, error: string) => {
@@ -31,6 +32,11 @@ export const runScreener = inngest.createFunction(
         concurrency: 1,
         retries: 1,
         triggers: [{ event: 'app/screener.run' }, { cron: 'TZ=America/New_York 20 17 * * 1-5' }],
+        // Whatever broke, never leave a scan showing as "running" (that also locks the Run scan now button)
+        onFailure: async ({ error }) => {
+            await connectToDatabase();
+            await ScreenerRun.updateMany({ status: 'running' }, { $set: { status: 'error', error: `Scan failed: ${error.message}`.slice(0, 500), finishedAt: new Date() } });
+        },
     },
     async ({ step }) => {
         if (!analystEnabled) return { skipped: 'analyst service not configured' };
@@ -39,6 +45,8 @@ export const runScreener = inngest.createFunction(
 
         const started = await step.run('start', async () => {
             await connectToDatabase();
+            // Only one scan runs at a time, so anything still marked running is left over from a crash
+            await ScreenerRun.updateMany({ status: 'running' }, { $set: { status: 'error', error: 'Interrupted', finishedAt: new Date() } });
             const last = await ScreenerRun.findOne({ status: 'done' }).sort({ startedAt: -1 }).lean();
             const prevRows = last ? await ScreenerRow.find({ runId: last._id }, { ticker: 1, strategy: 1, universe: 1, signal: 1 }).lean() : [];
             const open = await ForwardTrade.find({ outcome: 'open', universe: { $exists: true } }, { symbol: 1, strategy: 1, universe: 1 }).lean();
@@ -56,6 +64,7 @@ export const runScreener = inngest.createFunction(
         });
 
         let done = false;
+        let unreachable = 0;
         for (let i = 0; i < MAX_POLLS && !done; i++) {
             await step.sleep(`wait-${i}`, i === 0 ? '3m' : '2m');
             const state = await step.run(`poll-${i}`, async () => {
@@ -64,12 +73,15 @@ export const runScreener = inngest.createFunction(
                     return { status: job.status, stage: job.stage ?? null, error: job.error ?? null };
                 } catch (error) {
                     if (error instanceof AnalystJobMissingError) return { status: 'missing' as const, stage: null, error: 'The analyst service restarted and lost the scan' };
-                    throw error;
+                    // A busy or restarting Space answers 5xx for a while; keep the scan alive and check again
+                    return { status: 'unreachable' as const, stage: null, error: error instanceof Error ? error.message : String(error) };
                 }
             });
-            if (state.status === 'error' || state.status === 'missing') {
-                await step.run('mark-failed', () => fail(started.runId, state.error ?? 'Scan failed'));
-                return { runId: started.runId, failed: state.error };
+            unreachable = state.status === 'unreachable' ? unreachable + 1 : 0;
+            if (state.status === 'error' || state.status === 'missing' || unreachable >= MAX_UNREACHABLE) {
+                const reason = unreachable >= MAX_UNREACHABLE ? `The analyst service stopped answering (${state.error})` : state.error ?? 'Scan failed';
+                await step.run('mark-failed', () => fail(started.runId, reason));
+                return { runId: started.runId, failed: reason };
             }
             done = state.status === 'done';
         }

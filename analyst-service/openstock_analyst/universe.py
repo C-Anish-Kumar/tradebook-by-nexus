@@ -306,8 +306,13 @@ def passes_listing(row: pd.Series, f: Filters, members: set[str] | None, symbol:
         return False
     if f.exclude_sectors and row.sector in f.exclude_sectors:
         return False
-    if f.min_avg_dollar_volume and price and row.volume is not None:
-        if price * row.volume < f.min_avg_dollar_volume * PREFILTER_SLACK:
+    if f.min_avg_dollar_volume and price and row.volume is not None and row.volume == row.volume:
+        floor = f.min_avg_dollar_volume * PREFILTER_SLACK
+        if f.rel_volume_min:
+            # Today's volume must be rel_volume_min x its average, so today's dollar volume is at least about
+            # rel_volume_min x the floor: a far tighter cut that spares thousands of candle downloads
+            floor = max(floor, f.min_avg_dollar_volume * f.rel_volume_min * 0.8)
+        if price * row.volume < floor:
             return False
     return True
 
