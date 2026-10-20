@@ -97,6 +97,8 @@ declare global {
         params: Promise<{
             symbol: string;
         }>;
+        /** ?strategy= when opened from a screener row: that strategy's read leads the page. */
+        searchParams: Promise<{ strategy?: string }>;
     };
 
     type WatchlistButtonProps = {

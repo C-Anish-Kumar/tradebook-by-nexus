@@ -3,22 +3,21 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Menu, Plus, Star, X } from "lucide-react";
+import { LayoutDashboard, ListFilter, Menu, Plus, Star, X } from "lucide-react";
 import { openSearch } from "@/components/SearchCommand";
 import { cn } from "@/lib/utils";
 
-const PINNED = ['/dashboard', '/watchlist'];
+const PINNED = ['/', '/dashboard', '/watchlist'];
 const STORAGE_KEY = 'tradebook-tabs';
 const LEGACY_STORAGE_KEY = 'openstock-tabs'; // read once so tabs survive the rename
 const MAX_TABS = 12;
 
 const PAGE_LABELS: Record<string, string> = {
-    '/dashboard': 'Overview',
+    '/': 'Screener',
+    '/dashboard': 'Market',
     '/watchlist': 'Watchlist',
-    '/portfolio': 'Portfolio Lab',
     '/setups': 'Setups',
     '/chat': 'Ask',
-    '/rl-lab': 'RL Lab',
     '/profile': 'Profile',
 };
 
@@ -70,7 +69,7 @@ const TabBar = ({ onMenu }: { onMenu: () => void }) => {
         const index = tabs.indexOf(path);
         const next = tabs.filter((t) => t !== path);
         setTabs(next);
-        if (path === pathname) router.push(next[Math.max(0, index - 1)] ?? '/dashboard');
+        if (path === pathname) router.push(next[Math.max(0, index - 1)] ?? '/');
     };
 
     return (
@@ -102,6 +101,7 @@ const TabBar = ({ onMenu }: { onMenu: () => void }) => {
                         >
                             {/* Stretched link: the whole tab navigates, while the close button stays a real, focusable button */}
                             <Link href={path} aria-current={active ? 'page' : undefined} className="flex min-w-0 flex-1 items-center gap-2 before:absolute before:inset-0 before:content-['']">
+                                {path === '/' && <ListFilter />}
                                 {path === '/dashboard' && <LayoutDashboard />}
                                 {path === '/watchlist' && <Star />}
                                 <span className={cn('tab-label', isStock && 'mono text-[13px]')}>{tabLabel(path)}</span>

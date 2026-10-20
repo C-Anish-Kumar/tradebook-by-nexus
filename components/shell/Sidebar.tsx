@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BrainCircuit, Crosshair, LayoutDashboard, LogOut, MessageSquare, Scale, Search, Star } from "lucide-react";
+import { Crosshair, LayoutDashboard, ListFilter, LogOut, MessageSquare, Search, Star } from "lucide-react";
 import { openSearch } from "@/components/SearchCommand";
 import { signOut } from "@/lib/actions/auth.actions";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
 
     return (
         <aside className="sidebar">
-            <Link href="/dashboard" className="px-2 pt-1 pb-2" aria-label={`${BRAND_FULL} dashboard`}>
+            <Link href="/" className="px-2 pt-1 pb-2" aria-label={`${BRAND_FULL} screener`}>
                 <Logo />
             </Link>
 
@@ -36,8 +36,11 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
             </button>
 
             <nav className="flex flex-col gap-0.5">
+                <Link href="/" className={cn('side-item', pathname === '/' && 'is-active')}>
+                    <ListFilter /> Screener
+                </Link>
                 <Link href="/dashboard" className={cn('side-item', pathname === '/dashboard' && 'is-active')}>
-                    <LayoutDashboard /> Overview
+                    <LayoutDashboard /> Market
                 </Link>
                 <Link href="/watchlist" className={cn('side-item', pathname === '/watchlist' && 'is-active')}>
                     <Star /> <span className="flex-1">Watchlist</span>
@@ -48,12 +51,6 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
                 </Link>
                 <Link href="/chat" className={cn('side-item', pathname === '/chat' && 'is-active')}>
                     <MessageSquare /> Ask
-                </Link>
-                <Link href="/portfolio" className={cn('side-item', pathname === '/portfolio' && 'is-active')}>
-                    <Scale /> Portfolio Lab
-                </Link>
-                <Link href="/rl-lab" className={cn('side-item', pathname === '/rl-lab' && 'is-active')}>
-                    <BrainCircuit /> RL Lab
                 </Link>
             </nav>
 

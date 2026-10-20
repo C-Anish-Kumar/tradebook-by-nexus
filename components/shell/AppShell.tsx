@@ -42,7 +42,7 @@ const AppShell = ({ user, watchlist, initialStocks, children }: AppShellProps) =
             <div className="shell-container">
                 <div className="app">
                     <TabBar onMenu={() => setNavOpen(true)} />
-                    <main ref={workspaceRef} className={cn('workspace', pathname === '/dashboard' && 'is-first-tab')}>
+                    <main ref={workspaceRef} className={cn('workspace', pathname === '/' && 'is-first-tab')}>
                         <div className="workspace-inner">{children}</div>
                     </main>
                 </div>

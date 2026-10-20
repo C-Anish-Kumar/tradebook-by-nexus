@@ -65,8 +65,9 @@ export const MAX_POSITIONS = 2;
 /** Whole shares to buy so a stop-out loses `riskPct` of the account, never spending more than the account itself; null if the inputs can't size a trade. */
 export function sizeShares(account: number, riskPct: number, entry: number, stop: number) {
     if (!(account > 0) || !(riskPct > 0) || !(entry > stop) || stop <= 0) return null;
-    const byRisk = Math.floor((account * riskPct / 100) / (entry - stop));
-    const byCash = Math.floor(account / entry);
+    // The epsilon keeps float noise (3 - 2.8 = 0.20000000000000018) from costing a whole share
+    const byRisk = Math.floor((account * riskPct / 100) / (entry - stop) + 1e-9);
+    const byCash = Math.floor(account / entry + 1e-9);
     const shares = Math.max(0, Math.min(byRisk, byCash));
     return { shares, cost: shares * entry, risk: shares * (entry - stop), capped: byRisk > byCash, affordable: byCash >= 1 };
 }

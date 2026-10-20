@@ -1,15 +1,11 @@
 import { inngest } from '@/lib/inngest/client';
 import { pingAnalystService } from '@/lib/analyst';
-import { pingNexusService } from '@/lib/nexus';
 import { refreshEarningsCalendar, refreshMacroSnapshot, refreshMarketBrief } from '@/lib/market-intel';
 
-// The free Spaces sleep when idle; a ping every 15 minutes keeps first visits fast
+// The free Space sleeps when idle; a ping every 15 minutes keeps first visits fast
 export const keepAnalystAwake = inngest.createFunction(
     { id: 'keep-analyst-awake', concurrency: 1, triggers: [{ cron: '*/15 * * * *' }] },
-    async ({ step }) => ({
-        analyst: await step.run('ping', () => pingAnalystService()),
-        nexus: await step.run('ping-nexus', () => pingNexusService()),
-    }),
+    async ({ step }) => ({ analyst: await step.run('ping', () => pingAnalystService()) }),
 );
 
 // Precompute market-wide panels so pages only ever read MongoDB

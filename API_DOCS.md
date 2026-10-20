@@ -30,12 +30,12 @@ Times are in US Eastern where a time zone is shown, otherwise UTC.
 | `weekly-news-summary` | Mon 09:00 UTC, event `app/send.weekly.news` | Summarises top news and sends it as a Kit broadcast |
 | `check-stock-alerts` | every 5 min 4 AM–8 PM ET weekdays; every 30 min otherwise (realtime mode only) | Checks price alerts against live quotes and emails the owner |
 | `check-inactive-users` | daily 10:00 UTC | Sends a re-engagement email through Kit to users inactive for 30+ days (50 per run, at most one a month each) |
-| `keep-analyst-awake` | every 15 min | Pings the analyst and Nexus Spaces so the free tier does not sleep |
+| `keep-analyst-awake` | every 15 min | Pings the analyst Space so the free tier does not sleep |
 | `refresh-market-data` | hourly, event `app/market.refresh` | Earnings calendar, macro snapshot, market data cache |
 | `write-market-brief` | 8:50, 12:50, 16:50 ET weekdays, event `app/market.brief` | AI market brief |
 | `run-ai-analysis` | event `app/analysis.requested` | One TradingAgents analysis on the analyst Space |
-| `run-rl-job` | event `app/rl.requested` | One RL Lab training or scoring job on the Nexus Space |
 | `scan-setups` | 16:55 ET weekdays, event `app/setups.scan` | **Strategies 2-6**: scans every watchlisted symbol under every enabled strategy, one step per symbol and strategy, stores the setup with its 0-100 quant score, and messages opted-in users on entries and exits |
+| `run-screener` | 17:20 ET weekdays, event `app/screener.run` | **Market screener**: builds every universe in `config/universes.ts` on the analyst Space, waits in 2-minute sleeps, stores the ranked rows (entries, watches, holdings, exits), and logs entries to the per-universe forward test |
 | `telegram-setup` | event `app/telegram.setup` | Registers the Telegram webhook and commands (run once) |
 | `telegram-daily-summary` | 16:25 ET weekdays | Watchlist summary |
 | `telegram-strategy-signals` | 16:40 ET weekdays | **Strategy 1** (off by default, see `lib/strategies.ts`): messages users when a stock's verdict changes |
@@ -53,7 +53,7 @@ All routes except `/` need the `X-Analyst-Key` header.
 | `GET /backtest/{ticker}?years=` | Strategy 1 | Replay of the strategy with risk-adjusted scores |
 | `GET /setups/{ticker}?strategy=&account=&risk_pct=&universe=` | Strategies 2-6 (`strategy` = `breakout`, `ma_pullback`, `golden_cross`, `breakout_retest`, `volume_bounce`) | Regime-aware breakout state, plan, walk-forward evidence and the 0-100 `quant` score with its breakdown, cached 30 minutes |
 | `GET /fundamentals/{ticker}` | | SEC 10-K figures, insider trades, filings |
-| `POST /portfolio/optimize` | | Portfolio Lab allocations |
+| `POST /screen`, `GET /screen/{id}` | Strategies 2-6 | The market screener job: universes, per-universe validation, latest-bar reads |
 | `POST /analyses`, `GET /analyses/{id}` | | AI Analyst jobs |
 
 ## AI providers
