@@ -182,6 +182,19 @@ def build_setup(daily: pd.DataFrame, account: float | None = None, risk_pct: flo
             if len(_EVIDENCE_CACHE) > 500:
                 _EVIDENCE_CACHE.clear()
             _EVIDENCE_CACHE[ck] = ev
+    return read_latest(df, strategy, ev, account, risk_pct, reg)
+
+
+def read_latest(df: pd.DataFrame, strategy: str, ev: dict, account: float | None = None, risk_pct: float = 1.0,
+                reg: pd.Series | None = None) -> dict:
+    """The strategy's read of the latest bar (status, plan, quant score, warnings), given evidence already computed.
+
+    Shared by the per-stock endpoint (evidence from this stock's own history) and the screener (evidence pooled
+    over a sample of the stock's universe). `df` must already be normalised.
+    """
+    spec = SPECS[strategy]
+    if reg is None:
+        reg = detect_regimes(df).iloc[-1]
     params = ev["params"] or {k: v[0] for k, v in spec.grid.items()}
     st = live_state(df, params) if strategy == "breakout" else spec.cls(**params).live(df)
 

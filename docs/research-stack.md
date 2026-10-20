@@ -9,8 +9,8 @@ The workflow they cover: **corporate financials → AI research → portfolio co
 |---|---|---|---|
 | [edgartools](https://github.com/dgunning/edgartools) (MIT) | Used | Free, no API key, reads SEC filings directly; its getters pick the right statement line per company | `GET /fundamentals/{ticker}` → **Fundamentals** panel on stock pages |
 | [StockAgent](https://github.com/MingyuJ666/Stockagent) | Not used | No licence, pinned to 2022-era packages, and it simulates trader behaviour rather than researching a stock. The AI Analyst (TradingAgents) already covers AI research | — |
-| [skfolio](https://github.com/skfolio/skfolio) (BSD-3) | Used | scikit-learn style optimisers plus walk-forward cross-validation, so methods are scored on data they never saw | `POST /portfolio/optimize` → **Portfolio Lab** (`/portfolio`) |
-| [cvxportfolio](https://github.com/cvxgrp/cvxportfolio) (GPL-3) | Later | Strong at multi-period rebalancing with trading costs, but overlaps skfolio and its licence needs care | Phase 2: cost-aware rebalancing in Portfolio Lab |
+| [skfolio](https://github.com/skfolio/skfolio) (BSD-3) | Removed | Powered Portfolio Lab, which was dropped when the app became a swing-trading tool | — |
+| [cvxportfolio](https://github.com/cvxgrp/cvxportfolio) (GPL-3) | Later | Strong at multi-period rebalancing with trading costs, but overlaps skfolio and its licence needs care | — |
 | [FinQuant](https://github.com/fmilthaler/FinQuant) | Not used | Little activity, Quandl dependency, and everything it does skfolio does better | — |
 | [empyrical-reloaded](https://github.com/stefan-jansen/empyrical-reloaded) (Apache-2) | Used | The standard Sharpe / Sortino / Calmar / alpha / beta implementations | `metrics.performance()` used by Portfolio Lab and the strategy backtest |
 

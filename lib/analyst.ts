@@ -1,5 +1,6 @@
 import { cached, readCache } from '@/lib/cache';
 import type { Setup, StoredSetup } from '@/lib/setups';
+import type { AnalystScreenResult, Tracked } from '@/lib/screener';
 import { setupCacheKey, type StrategyId } from '@/lib/strategies';
 
 // Client for the TradingAgents service in analyst-service/ (hosted outside Vercel: a run takes minutes)
@@ -43,6 +44,22 @@ export const startAnalystJob = (ticker: string, date: string) =>
     call<{ id: string }>('/analyses', { method: 'POST', body: JSON.stringify({ ticker, date }) });
 
 export const getAnalystJob = (id: string) => call<AnalystJob>(`/analyses/${encodeURIComponent(id)}`);
+
+export type ScreenJob = {
+    id: string;
+    status: 'queued' | 'running' | 'done' | 'error';
+    stage?: string;
+    done?: number | null;
+    total?: number | null;
+    result?: AnalystScreenResult;
+    error?: string;
+};
+
+/** Starts the nightly market screen (or joins the one already running) on the analyst service. */
+export const startScreenJob = (body: { universes: unknown[]; strategies: string[]; track: Tracked[] }) =>
+    call<{ id: string; status: string }>('/screen', { method: 'POST', body: JSON.stringify(body) });
+
+export const getScreenJob = (id: string) => call<ScreenJob>(`/screen/${encodeURIComponent(id)}`);
 
 export type StrategyCheck = { rule: string; passed: boolean; detail: string };
 export type StrategySignals = {
@@ -177,47 +194,6 @@ export async function getFundamentals(ticker: string): Promise<Fundamentals | nu
         if (!res.ok) throw new Error(`fundamentals ${res.status}`);
         return res.json() as Promise<Fundamentals>;
     });
-}
-
-export type PortfolioMethod = {
-    key: 'max_sharpe' | 'min_variance' | 'hrp' | 'risk_parity' | 'equal';
-    label: string;
-    weights: Record<string, number>;
-    in_sample: { annual_return: number; annual_volatility: number };
-    out_of_sample: RiskMetrics;
-};
-export type PortfolioResult = {
-    benchmark_ticker: string; years: number;
-    tickers: string[]; start: string; end: string; out_of_sample_start: string;
-    walk_forward: { train_days: number; test_days: number };
-    methods: PortfolioMethod[];
-    benchmark: RiskMetrics;
-    equity: ({ date: string; benchmark: number } & Record<string, number | string>)[];
-    frontier: { annual_return: number; annual_volatility: number }[];
-    assets: { ticker: string; annual_return: number; annual_volatility: number }[];
-    correlation: { tickers: string[]; matrix: number[][] };
-};
-
-// skfolio walk-forward comparison on the analyst service, kept for 6 hours per ticker set
-export async function optimizePortfolio(tickers: string[], years: number): Promise<PortfolioResult> {
-    if (!analystEnabled) throw new Error('The analyst service is not configured');
-    const key = `portfolio:${[...tickers].sort().join(',')}:${years}`;
-    const result = await cached(key, 6 * 60 * 60_000, async () => {
-        const res = await fetch(`${SERVICE_URL}/portfolio/optimize`, {
-            method: 'POST',
-            headers: serviceHeaders(),
-            body: JSON.stringify({ tickers, years, benchmark: 'SPY' }),
-            cache: 'no-store',
-            signal: AbortSignal.timeout(90_000),
-        });
-        if (res.status === 404 || res.status === 422) {
-            const detail = await res.json().then((b) => b.detail).catch(() => null);
-            throw new Error(typeof detail === 'string' ? detail : 'Not enough price history for these tickers');
-        }
-        if (!res.ok) throw new Error(res.status >= 502 ? WAKING : `Optimisation failed (${res.status})`);
-        return res.json() as Promise<PortfolioResult>;
-    }, { throwOnMiss: true });
-    return result!;
 }
 
 // Pinged on a schedule so the free Space never falls asleep between visitors

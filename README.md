@@ -1,12 +1,16 @@
 # Apex Tradebook
 
-A free market terminal: live prices, watchlists, email price alerts, company insights, and an
-**AI analyst team** that debates any stock and rates it from Buy to Sell.
+A private swing-trading workspace: a ranked screener over whole market universes, daily-candle strategies with
+walk-forward evidence, forward testing, and an **AI analyst team** that debates any stock and rates it from Buy to Sell.
+Research tooling, not financial advice: nothing here places trades.
 
 Live at **https://apex-tradebook.vercel.app**
 
 ## Features
 
+- **Ranked market screener** (the home page): every universe in [`config/universes.ts`](config/universes.ts) is
+  built each weekday after the US close, every enabled strategy is run on every member, and each universe gets its own
+  tab ranked by quant score. See [Screener](#screener)
 - **Charts that move**: TradingView candles, technicals and financials for any listed company
 - **Live quotes**: Finnhub prices refreshing every 15 seconds, shared through a cache
 - **Watchlists and alerts**: star stocks, set price targets, get an email when they cross
@@ -18,10 +22,6 @@ Live at **https://apex-tradebook.vercel.app**
 - **Ask**: a chat page where you ask for signals in plain words ("best setups on my watchlist today", "every strategy on
   MU"). Answers quote only the stored scans, with the score, entry, stop and whether the setup is validated
 - **Fundamentals**: three years of SEC 10-K figures, margins, insider buys and sells and recent filings
-- **RL Lab**: train a reinforcement-learning trading agent ([Nexus](https://github.com/C-Anish-Kumar/nexus), built on
-  FinRL) on a strategy template, compare it with buy-and-hold on data it never saw, and see today's signal
-- **Portfolio Lab**: five allocation methods tested walk-forward on your stocks, with weights, the
-  efficient frontier and a correlation matrix
 - **Market brief**: an AI-written summary of what moved and why, before the open, at midday and after the close
 - **Macro dashboard**: a fear & greed gauge, the US Treasury yield curve and the economic calendar
 - **Earnings calendar**: upcoming reports for your watchlist with beat/miss, the week's biggest reporters,
@@ -30,6 +30,44 @@ Live at **https://apex-tradebook.vercel.app**
   earnings reminders, sent by your own Telegram bot (connect from the Profile page)
 - **Market overview**: sector heatmap, movers, top stories and sentiment from Reddit, X.com, news and Polymarket
 - **Emails**: AI-written welcome email, and a weekly news digest sent through Kit
+
+## Screener
+
+`/` is a ranked table per universe. Universes, risk settings and the account size live in one file,
+[`config/universes.ts`](config/universes.ts):
+
+| Universe | Filters | Risk a trade | Slippage | Telegram |
+|---|---|---|---|---|
+| Large-cap liquid | S&P 500 or Nasdaq-100 member, $20M+ average daily dollar volume, price $5+ | 0.75% | 5 bps | on, score 60+ |
+| Unusual volume | today's volume 2.5x+ its 20-day average, $5M+ a day, price $3+ | 0.5% | 15 bps | on, score 65+ |
+| Under $5 | NYSE, Nasdaq or NYSE American, $1-$5, $1.5M+ a day, estimated spread under 1% | 0.35%, 25% of the account at most | 40 bps | off |
+
+How a scan works (`lib/inngest/screener.ts`, 5:20 PM New York time on weekdays, or **Run scan now**):
+
+1. The analyst service builds each universe from the day's listings (Nasdaq's public screener: every NYSE, Nasdaq and
+   NYSE American stock, so OTC and pink sheets never appear), the S&P 500 and Nasdaq-100 lists, and daily candles from
+   Yahoo, fetched in batches and cached on the Space. Average dollar volume, relative volume, ATR% and an estimated
+   bid-ask spread (Corwin-Schultz, from daily highs and lows) are computed from the candles.
+2. A stock in several universes is listed once, in the first universe it belongs to, tagged with the others.
+3. Each strategy is validated **per universe**: walk-forward on a fixed sample of 25 members with that universe's
+   slippage, out-of-sample returns pooled, then the same gates as everywhere else (no lookahead, profitable out of
+   sample, survives 2x costs, beats buy-and-hold and an MA cross, Deflated Sharpe counting every setting x strategy x
+   universe, enough trades). It is re-run weekly. Rows of a strategy that fails any gate are *unvalidated* and their
+   score stays capped at 69.
+4. Each member is read under every strategy on its latest daily bar. Only stocks with something in play are stored:
+   **Entry**, **Watch** (near the trigger), **Holding**, or **Exit** (in play last scan, off today).
+5. Every entry is logged as a paper trade in its universe's forward-test record and judged on later daily closes.
+
+Columns: ticker, strategy name, signal, quant score, validated, entry, stop, 2R/3R targets, risk per share, position
+size (account x the universe's risk per trade, sized from the stop), regime, sector, scan date, and flags: other
+universes the stock belongs to, earnings within 5 days, and for the under-$5 universe reverse splits, offering
+filings (S-1/S-3/424B in the last 90 days), floats under 10M shares and gaps over 20%. Clicking a row opens the stock
+page led by that strategy's "what it looks at" and the scan's numbers.
+
+**Data limits.** Finnhub's free plan (60 calls a minute, no bulk daily candles) cannot cover thousands of stocks, so
+the screener never calls it per stock: listings come from Nasdaq and candles from Yahoo through the analyst service.
+Finnhub is used once per scan for the earnings calendar. Spreads are estimated, not quoted; real quotes come with the
+IBKR connection.
 
 ## Strategies
 
@@ -77,7 +115,7 @@ validation gate is **capped at 69**, so an unproven idea can never look like a p
 ## Stack
 
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Better Auth · MongoDB Atlas · Finnhub ·
-TradingView widgets · Inngest · Nodemailer (Gmail) · Kit · Gemini · TradingAgents, edgartools, skfolio and
+TradingView widgets · Inngest · Nodemailer (Gmail) · Kit · Gemini · TradingAgents, edgartools, yfinance and
 empyrical on a Hugging Face Space
 
 ## How it is deployed
@@ -86,9 +124,8 @@ empyrical on a Hugging Face Space
 |---|---|
 | Web app | Vercel (this repo, `main` auto-deploys) |
 | Database | MongoDB Atlas |
-| Background jobs | Inngest Cloud (Vercel integration): price alerts, market data every hour, the market brief 3× a weekday, the nightly Strategy 2 scan, Telegram messages and a ping that keeps the AI service awake. The list is in [`API_DOCS.md`](API_DOCS.md) |
+| Background jobs | Inngest Cloud (Vercel integration): the nightly market screener, the watchlist setups scan, price alerts, market data every hour, the market brief 3× a weekday, Telegram messages and a ping that keeps the AI service awake. The list is in [`API_DOCS.md`](API_DOCS.md) |
 | AI analyst service | Hugging Face Space running [`analyst-service/`](analyst-service/) |
-| RL Lab service | Hugging Face Space running [Nexus](https://github.com/C-Anish-Kumar/nexus) (`space/` in that repo) |
 
 ## Environment variables
 
@@ -117,21 +154,13 @@ Run `npm run check-env` to see which of these your `.env` has.
 | `FRED_API_KEY` | free from https://fred.stlouisfed.org/docs/api/api_key.html; turns on the economic calendar |
 | `ADANOS_API_KEY`, `ADANOS_API_BASE_URL` | stock sentiment from Reddit, X.com, news and Polymarket |
 
-**Optional: analyst service (AI Analyst, trade-signal strategies, Ask chat, fundamentals, Portfolio Lab)**
+**Optional: analyst service (screener, AI Analyst, trade-signal strategies, Ask chat, fundamentals)**
 
 | Variable | |
 |---|---|
 | `ANALYST_SERVICE_URL`, `ANALYST_API_KEY` | the analyst Space and its shared secret. Without them these features show as off |
 | `ANALYST_HF_TOKEN` | only if the analyst Space is private |
 | `ANALYST_DAILY_LIMIT` | AI Analyst runs per user per day (default 5) |
-
-**Optional: RL Lab**
-
-| Variable | |
-|---|---|
-| `NEXUS_SERVICE_URL`, `NEXUS_API_KEY` | the Nexus Space and its shared secret; turns on RL Lab |
-| `NEXUS_HF_TOKEN` | only if the Nexus Space is private |
-| `NEXUS_DAILY_LIMIT` | RL Lab runs per user per day (default 10) |
 
 **Sign-in (required), email, Telegram**
 

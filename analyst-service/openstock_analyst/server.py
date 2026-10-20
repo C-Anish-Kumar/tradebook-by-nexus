@@ -229,45 +229,6 @@ def get_fundamentals_route(ticker: str):
     return result
 
 
-class PortfolioRequest(BaseModel):
-    tickers: list[str]
-    years: int = 5
-    benchmark: str = "SPY"
-
-
-PORTFOLIO_TTL_SECONDS = 6 * 60 * 60
-portfolio_cache: dict[tuple, tuple[float, dict]] = {}
-
-
-@app.post("/portfolio/optimize", dependencies=[Depends(require_key)])
-def optimize_portfolio(body: PortfolioRequest):
-    """Five allocation methods (skfolio), scored walk-forward with empyrical metrics."""
-    import yfinance as yf
-    from openstock_analyst.portfolio import optimize
-
-    tickers = sorted({t.strip().upper() for t in body.tickers})
-    benchmark = body.benchmark.strip().upper()
-    if not 2 <= len(tickers) <= 12 or not all(TICKER_PATTERN.match(t) for t in tickers + [benchmark]):
-        raise HTTPException(status_code=422, detail="Pick 2 to 12 valid tickers")
-    years = max(2, min(body.years, 10))
-    key = (tuple(tickers), years, benchmark)
-    cached = portfolio_cache.get(key)
-    if cached and time.time() - cached[0] < PORTFOLIO_TTL_SECONDS:
-        return cached[1]
-
-    prices = yf.download(tickers + [benchmark], period=f"{years}y", auto_adjust=True, progress=False)["Close"]
-    missing = [t for t in tickers if t not in prices.columns or prices[t].dropna().empty]
-    if missing:
-        raise HTTPException(status_code=404, detail=f"No price history for {', '.join(missing)}")
-    try:
-        result = optimize(prices[tickers], prices[benchmark])
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
-    result = {"benchmark_ticker": benchmark, "years": years, **result}
-    portfolio_cache[key] = (time.time(), result)
-    return result
-
-
 SETUP_TTL_SECONDS = 30 * 60
 setup_cache: dict[tuple, tuple[float, dict]] = {}
 daily_cache: dict[str, tuple[float, object]] = {}
@@ -317,6 +278,82 @@ def get_setup(ticker: str, account: float | None = None, risk_pct: float = 1.0, 
     result = {"ticker": ticker, **build_setup(daily, account, risk_pct, universe, key=ticker, strategy=strategy)}
     setup_cache[key] = (time.time(), result)
     return result
+
+
+# ---------------------------------------------------------------- nightly market screener
+
+screen_executor = ThreadPoolExecutor(max_workers=1)  # its own worker, so a scan never queues behind an AI analysis
+screen_jobs: dict[str, dict] = {}
+
+
+class ScreenUniverse(BaseModel):
+    id: str
+    name: str
+    filters: dict = {}
+    slippageBps: float = 10.0
+    badges: bool = False
+
+
+class ScreenTracked(BaseModel):
+    ticker: str
+    strategy: str
+    universe: str
+
+
+class ScreenRequest(BaseModel):
+    universes: list[ScreenUniverse]
+    strategies: list[str]
+    track: list[ScreenTracked] = []
+
+
+def _run_screen(job_id: str, body: ScreenRequest):
+    from openstock_analyst.screener import UniverseSpec, run_screen
+    from openstock_analyst.universe import Filters
+
+    def progress(stage, done=None, total=None):
+        with jobs_lock:
+            screen_jobs[job_id].update(stage=stage, done=done, total=total)
+
+    with jobs_lock:
+        screen_jobs[job_id].update(status="running", started_at=time.time())
+    try:
+        specs = [UniverseSpec(u.id, u.name, Filters.from_dict(u.filters), u.slippageBps, u.badges) for u in body.universes]
+        track = [t.model_dump() for t in body.track if TICKER_PATTERN.match(t.ticker.strip().upper())]
+        result = run_screen(specs, body.strategies, os.environ.get("SEC_IDENTITY", ""), progress, track)
+        with jobs_lock:
+            screen_jobs[job_id].update(status="done", result=result, finished_at=time.time())
+    except Exception as exc:  # surfaced to the caller; the traceback stays in the host's logs
+        import traceback
+        traceback.print_exc()
+        with jobs_lock:
+            screen_jobs[job_id].update(status="error", error=f"{type(exc).__name__}: {exc}"[:500], finished_at=time.time())
+
+
+@app.post("/screen", dependencies=[Depends(require_key)], status_code=202)
+def create_screen(body: ScreenRequest):
+    """Start a full screen of the given universes in the background; poll GET /screen/{id}."""
+    if not body.universes or not body.strategies:
+        raise HTTPException(status_code=422, detail="Send at least one universe and one strategy")
+    cutoff = time.time() - JOB_TTL_SECONDS
+    with jobs_lock:
+        for jid in [j for j, job in screen_jobs.items() if job["created_at"] < cutoff]:
+            del screen_jobs[jid]
+        running = next((j for j in screen_jobs.values() if j["status"] in ("queued", "running")), None)
+        if running:
+            return {"id": running["id"], "status": running["status"]}  # one scan at a time; join the one in flight
+        job_id = uuid.uuid4().hex
+        screen_jobs[job_id] = {"id": job_id, "status": "queued", "created_at": time.time()}
+    screen_executor.submit(_run_screen, job_id, body)
+    return {"id": job_id, "status": "queued"}
+
+
+@app.get("/screen/{job_id}", dependencies=[Depends(require_key)])
+def get_screen(job_id: str):
+    with jobs_lock:
+        job = screen_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Unknown job")
+        return dict(job)
 
 
 def main():

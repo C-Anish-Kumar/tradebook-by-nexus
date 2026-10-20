@@ -55,7 +55,8 @@ export type ForwardTradeRow = { id: string; strategy: StrategyId; symbol: string
 export async function getForwardTest(): Promise<{ rows: ForwardRow[]; recent: ForwardTradeRow[] }> {
     await requireUserId();
     await connectToDatabase();
-    const all = await ForwardTrade.find({}).sort({ signalDate: -1 }).limit(2000).lean();
+    // The watchlist scan's record only; screener trades are tracked per universe
+    const all = await ForwardTrade.find({ universe: { $exists: false } }).sort({ signalDate: -1 }).limit(2000).lean();
     const rows = scannerStrategies().map((s) => ({ strategy: s.id, name: s.name, ...summarize(all.filter((t) => t.strategy === s.id)) }));
     const recent = all.slice(0, 12).map((t) => ({
         id: String(t._id), strategy: t.strategy as StrategyId, symbol: t.symbol, signalDate: t.signalDate,

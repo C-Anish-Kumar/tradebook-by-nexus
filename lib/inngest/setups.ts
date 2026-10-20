@@ -74,7 +74,7 @@ export const scanSetups = inngest.createFunction(
                 for (const f of fresh) {
                     const plan = f.stored.setup.plan;
                     if (!plan) continue;
-                    const exists = await ForwardTrade.exists({ strategy: f.strategy.id, symbol: f.symbol, $or: [{ outcome: 'open' }, { signalDate: f.stored.setup.date }] });
+                    const exists = await ForwardTrade.exists({ strategy: f.strategy.id, symbol: f.symbol, universe: { $exists: false }, $or: [{ outcome: 'open' }, { signalDate: f.stored.setup.date }] });
                     if (exists) continue;
                     await ForwardTrade.create({
                         strategy: f.strategy.id, symbol: f.symbol, signalDate: f.stored.setup.date,
@@ -83,7 +83,7 @@ export const scanSetups = inngest.createFunction(
                     });
                     opened++;
                 }
-                for (const trade of await ForwardTrade.find({ outcome: 'open' })) {
+                for (const trade of await ForwardTrade.find({ outcome: 'open', universe: { $exists: false } })) {
                     const latest = (await readCache<StoredSetup>(setupCacheKey(trade.strategy as Strategy['id'], trade.symbol)))?.value?.setup;
                     const update = latest && evaluateTrade(trade, latest);
                     if (!update) continue;

@@ -6,6 +6,8 @@ export type ForwardOutcome = 'open' | 'stopped' | 'target' | 'exited' | 'expired
 export interface IForwardTrade {
     strategy: string;
     symbol: string;
+    /** The screener universe that logged it; absent for trades from the watchlist scan. */
+    universe?: string;
     signalDate: string; // the daily bar the setup was based on (YYYY-MM-DD)
     entry: number;
     stop: number;
@@ -23,6 +25,7 @@ const ForwardTradeSchema = new Schema<IForwardTrade>(
     {
         strategy: { type: String, required: true },
         symbol: { type: String, required: true },
+        universe: { type: String, index: true },
         signalDate: { type: String, required: true },
         entry: { type: Number, required: true },
         stop: { type: Number, required: true },
@@ -37,7 +40,8 @@ const ForwardTradeSchema = new Schema<IForwardTrade>(
     },
     { timestamps: true, versionKey: false },
 );
-ForwardTradeSchema.index({ strategy: 1, symbol: 1, signalDate: 1 }, { unique: true });
+// One trade per signal per source: the watchlist scan (no universe) and each screener universe keep separate records
+ForwardTradeSchema.index({ strategy: 1, symbol: 1, signalDate: 1, universe: 1 }, { unique: true });
 
 export const ForwardTrade: Model<IForwardTrade> =
     (models?.ForwardTrade as Model<IForwardTrade>) || model<IForwardTrade>('ForwardTrade', ForwardTradeSchema);

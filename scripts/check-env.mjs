@@ -67,11 +67,6 @@ const optionalVars = {
     'ANALYST_HF_TOKEN': 'Only if the analyst Space is private: a Hugging Face read token',
     'ANALYST_DAILY_LIMIT': 'AI Analyst runs allowed per user per day (default 5)',
 
-    // RL Lab (separate Nexus Space)
-    'NEXUS_SERVICE_URL': 'URL of the Nexus Space. Without it RL Lab is off',
-    'NEXUS_API_KEY': 'Shared secret for the Nexus Space',
-    'NEXUS_HF_TOKEN': 'Only if the Nexus Space is private: a Hugging Face read token',
-    'NEXUS_DAILY_LIMIT': 'RL Lab runs allowed per user per day (default 10)',
 
     // Telegram
     'TELEGRAM_BOT_TOKEN': 'Bot token from @BotFather. Turns on Telegram messages',
