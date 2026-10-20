@@ -145,3 +145,38 @@ def test_tracked_trades_are_reported_even_when_quiet_or_gone(monkeypatch, tmp_pa
     assert ("GONE", "ma_pullback") not in pairs                                         # only what was tracked
     gone = next(r for r in out["rows"] if r["ticker"] == "GONE")
     assert gone["universe"] == "all" and gone["name"] is None
+
+
+def test_results_are_json_safe_even_with_blank_listing_fields(monkeypatch, tmp_path):
+    """A blank sector is NaN in pandas; it once made the whole result unserialisable (HTTP 500 on GET /screen)."""
+    import json
+
+    monkeypatch.setattr(screener, "CACHE_DIR", tmp_path)
+    listings = pd.DataFrame({"name": ["Co A", "Co B"], "exchange": ["NYSE", "NYSE"], "price": [40.0, 40.0],
+                             "volume": [2e6, 2e6], "market_cap": [np.nan, 1e10], "sector": [np.nan, "Energy"],
+                             "industry": [None, None]}, index=["A", "B"])
+    data = {"A": candles(700, seed=5, price=40.0, volume=2e6), "B": candles(700, seed=6, price=40.0, volume=2e6)}
+    monkeypatch.setattr(screener, "fetch_listings", lambda: listings)
+    monkeypatch.setattr(screener, "load_daily", lambda wanted, period, **kw: {s: data[s] for s in wanted if s in data})
+    specs = [screener.UniverseSpec("all", "All", Filters(min_avg_dollar_volume=1e6), 10)]
+    out = screener.run_screen(specs, list(SPECS), track=[{"ticker": "A", "strategy": s, "universe": "all"} for s in SPECS])
+    json.dumps(out, allow_nan=False)
+    a_rows = [r for r in out["rows"] if r["ticker"] == "A"]
+    assert a_rows and all(r["sector"] is None and r["market_cap"] is None for r in a_rows)
+
+
+def test_json_safe_cleans_nan_and_numpy():
+    import json
+
+    clean = screener.json_safe({"a": float("nan"), "b": [np.float64(1.5), np.int64(2), np.bool_(True)], "c": "x"})
+    assert clean == {"a": None, "b": [1.5, 2, True], "c": "x"}
+    json.dumps(clean, allow_nan=False)
+
+
+def test_unusual_volume_prefilter_needs_a_loud_day():
+    f = Filters(min_avg_dollar_volume=5e6, rel_volume_min=2.5)
+    quiet = pd.Series({"exchange": "NYSE", "price": 10.0, "volume": 6e5, "market_cap": 1e9, "sector": "Energy"})   # $6M today
+    loud = pd.Series({"exchange": "NYSE", "price": 10.0, "volume": 1.2e6, "market_cap": 1e9, "sector": "Energy"})  # $12M today
+    assert not passes_listing(quiet, f, None, "Q")
+    assert passes_listing(loud, f, None, "L")
+    assert passes_listing(quiet, Filters(min_avg_dollar_volume=5e6), None, "Q")   # without the volume filter, $6M is plenty

@@ -25,6 +25,8 @@ export type ScreenerData = {
     latest: Pick<ScreenerRunInfo, 'status' | 'startedAt' | 'error'> | null;
 };
 
+const STALE_MS = 3 * 60 * 60_000;
+
 type RunDoc = { _id: unknown; status: ScreenerRunStatus; scanDate?: string; startedAt: Date; finishedAt?: Date; error?: string; problems?: string[]; universes?: Record<string, UniverseSummary> };
 
 const info = (r: RunDoc): ScreenerRunInfo => ({
@@ -49,8 +51,10 @@ export async function getScreener(): Promise<ScreenerData> {
         ScreenerRun.findOne({}).sort({ startedAt: -1 }).lean<RunDoc>(),
     ]);
     const rows = done ? await ScreenerRow.find({ runId: done._id }).select('-runId').sort({ score: -1 }).lean() : [];
+    // A scan "running" for over 3 hours died without saying so (the job allows two and a half): show it as failed
+    const stale = newest?.status === 'running' && Date.now() - newest.startedAt.getTime() > STALE_MS;
     const latest = newest && (!done || String(newest._id) !== String(done._id))
-        ? { status: newest.status, startedAt: newest.startedAt.toISOString(), error: newest.error ?? null }
+        ? { status: stale ? 'error' as const : newest.status, startedAt: newest.startedAt.toISOString(), error: stale ? 'The scan stopped without finishing' : newest.error ?? null }
         : null;
     return {
         run: done ? info(done) : null,

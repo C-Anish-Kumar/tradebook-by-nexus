@@ -208,6 +208,24 @@ def float_badge(symbol: str) -> dict | None:
 
 # ---------------------------------------------------------------- the scan
 
+def json_safe(o):
+    """The result goes out as JSON, which has no NaN: non-finite floats become None, numpy scalars plain Python.
+    One blank sector (pandas stores it as NaN) used to fail the whole scan's response."""
+    if isinstance(o, dict):
+        return {k: json_safe(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [json_safe(v) for v in o]
+    if isinstance(o, np.generic):
+        o = o.item()
+    if isinstance(o, float) and not np.isfinite(o):
+        return None
+    return o
+
+
+def _text(v):
+    return v if isinstance(v, str) and v.strip() else None
+
+
 def run_screen(universes: list[UniverseSpec], strategies: list[str], sec_identity: str = "",
                progress=lambda stage, done=None, total=None: None, track: list[dict] | None = None) -> dict:
     """Build every universe, validate every strategy per universe, and read the latest bar for every member.
@@ -294,9 +312,9 @@ def run_screen(universes: list[UniverseSpec], strategies: list[str], sec_identit
             if read["status"] == "none" and (sym, sid) not in tracked:
                 continue
             rows.append({
-                "ticker": sym, "name": None if meta is None else meta["name"],
-                "exchange": None if meta is None else meta["exchange"],
-                "sector": None if meta is None else meta["sector"],
+                "ticker": sym, "name": None if meta is None else _text(meta["name"]),
+                "exchange": None if meta is None else _text(meta["exchange"]),
+                "sector": None if meta is None else _text(meta["sector"]),
                 "market_cap": None if meta is None else _num(meta["market_cap"], 0),
                 "universe": uid, "tags": tags, "strategy": sid,
                 "date": read["date"], "close": read["close"], "status": read["status"], "trigger": read["trigger"],
@@ -328,7 +346,7 @@ def run_screen(universes: list[UniverseSpec], strategies: list[str], sec_identit
             seen[sym] = badges
         row["badges"] = seen[sym]
 
-    return {
+    return json_safe({
         "date": max((r["date"] for r in rows), default=None),
         "universes": {
             u.id: {
@@ -343,4 +361,4 @@ def run_screen(universes: list[UniverseSpec], strategies: list[str], sec_identit
         "rows": rows,
         "problems": problems,
         "seconds": round(time.time() - started, 1),
-    }
+    })
