@@ -4,6 +4,7 @@ import { Schema, model, models, type Model } from 'mongoose';
 export type NotificationPrefs = {
     alerts: boolean; daily: boolean; signals: boolean; earnings: boolean;
     setups: boolean; maPullback: boolean; goldenCross: boolean; breakoutRetest: boolean; volumeBounce: boolean;
+    rsiDip: boolean; bbSnapback: boolean; macdTrend: boolean; tdExhaustion: boolean;
 };
 
 export interface INotificationSettings {
@@ -37,6 +38,10 @@ const NotificationSettingsSchema = new Schema<INotificationSettings>(
             goldenCross: { type: Boolean, default: false },
             breakoutRetest: { type: Boolean, default: false },
             volumeBounce: { type: Boolean, default: false },
+            rsiDip: { type: Boolean, default: false },
+            bbSnapback: { type: Boolean, default: false },
+            macdTrend: { type: Boolean, default: false },
+            tdExhaustion: { type: Boolean, default: false },
         },
     },
     { timestamps: true, versionKey: false }

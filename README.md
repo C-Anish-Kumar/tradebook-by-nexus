@@ -16,7 +16,7 @@ Live at **https://apex-tradebook.vercel.app**
 - **Watchlists and alerts**: star stocks, set price targets, get an email when they cross
 - **AI Analyst**: [TradingAgents](https://github.com/TauricResearch/TradingAgents) analysts, bull/bear
   researchers, a trader and a risk team debate a stock and save a rating plus a full report
-- **Trade signals from six strategies you choose between**: a nightly scan of your watchlist, one tab per strategy on
+- **Trade signals from ten strategies you choose between**: a nightly scan of your watchlist, one tab per strategy on
   the Setups page. Every stock gets a **0-100 quant score** and its walk-forward evidence (Deflated Sharpe, cost
   stress); setups that fail the gates are labelled *Unvalidated* and capped at 69
 - **Ask**: a chat page where you ask for signals in plain words ("best setups on my watchlist today", "every strategy on
@@ -83,6 +83,16 @@ opt-in. A strategy that is off appears nowhere: no panel, no Telegram switch, no
 | Strategy 4: Golden cross pullback | After the 50 MA crosses above a rising 200 MA, buy the pullback toward the 50 | On |
 | Strategy 5: Breakout and retest | Breakout on rising volume, then buy the low-volume retest of the broken level | On |
 | Strategy 6: High-volume bounce | Hammer or bullish engulfing on standout volume at support, stop below its low | On |
+| Oversold dip in an uptrend | Above the 200-day average, 2-day RSI under 5-10; exit above the 5-day average or RSI over 70 | On, new |
+| Bollinger band snap-back | Above the 200-day average, a close below the lower band then back inside, RSI(14) under 35; exit at the middle band | On, new |
+| MACD trend continuation | 50 EMA over 200 EMA, MACD crosses up above zero, ADX up with +DI over -DI; exit on the MACD cross down | On, new |
+| TD Sequential exhaustion | A perfected 9-count TD buy setup in a stock above its 200-day average; exit on a TD sell setup | On, new |
+
+The last four re-implement ideas from [freqtrade-strategies](https://github.com/freqtrade/freqtrade-strategies)
+(RSI and Bollinger mean-reversion, MACD/EMA trend filters, TD Sequential). Those are written for crypto on 5-minute to
+4-hour candles and tuned by hyperopt, so only the idea is kept: the rules are re-written for daily candles and holds of
+days to weeks in `analyst-service/openstock_analyst/aqp/strategies/playbook.py`, with a small grid that the
+validation counts. They start unvalidated like every new strategy.
 
 Strategies 3-6 come from the TEDucation 2.0 trading knowledge base (daily-chart setups only; the VWAP, opening-range,
 premarket and volume-profile setups need minute data and are not built). The PDF often says "per your plan" for stops,

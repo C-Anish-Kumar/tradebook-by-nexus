@@ -110,7 +110,8 @@ def test_relative_volume_uses_prior_bars_only():
     assert relative_volume(df.iloc[:10]) is None
 
 
-ALL_STRATEGIES = ["breakout", "ma_pullback", "golden_cross", "breakout_retest", "volume_bounce"]
+ALL_STRATEGIES = ["breakout", "ma_pullback", "golden_cross", "breakout_retest", "volume_bounce",
+                  "rsi_dip", "bb_snapback", "macd_trend", "td_exhaustion"]
 
 
 @pytest.mark.parametrize("strategy", ALL_STRATEGIES)
@@ -123,7 +124,7 @@ def test_every_strategy_builds_a_scored_setup(trending, strategy):
         assert s["plan"]["stop"] < s["plan"]["entry"] and s["plan"]["exit_rule"]
 
 
-@pytest.mark.parametrize("strategy", ["ma_pullback", "golden_cross", "breakout_retest", "volume_bounce"])
+@pytest.mark.parametrize("strategy", ALL_STRATEGIES[1:])
 def test_playbook_strategies_never_peek_at_the_future(trending, strategy):
     from openstock_analyst.setups import SPECS
 
@@ -138,7 +139,7 @@ def test_playbook_strategies_trade_on_some_data():
     """Guards against a rule that can never fire: across a few seeds each strategy enters at least once."""
     from openstock_analyst.setups import SPECS
 
-    for strategy in ["ma_pullback", "breakout_retest", "volume_bounce"]:
+    for strategy in ["ma_pullback", "breakout_retest", "volume_bounce", "rsi_dip", "bb_snapback", "macd_trend", "td_exhaustion"]:
         spec = SPECS[strategy]
         entries = 0
         for seed in range(1, 8):
