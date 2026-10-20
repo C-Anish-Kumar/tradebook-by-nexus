@@ -1,48 +1,23 @@
-import Link from "next/link";
 import React from "react";
 import Logo from "@/components/Logo";
-import { BRAND_FULL } from "@/lib/brand";
 import {redirect} from "next/navigation";
 import {getSession} from "@/lib/better-auth/auth";
-import ProductPreview from "@/components/landing/ProductPreview";
 import { SocialProvidersProvider } from "@/components/forms/SocialAuthButtons";
 
 const Layout = async ({ children }: { children : React.ReactNode }) => {
 
     const session = await getSession();
 
-    if (session?.user) redirect('/dashboard')
+    if (session?.user) redirect('/')
 
-    // Same condition that enables the providers in lib/better-auth/auth.ts
-    const socialProviders = [
-        ...(process.env.GOOGLE_CLIENT_ID ? ['google' as const] : []),
-        ...(process.env.GITHUB_CLIENT_ID ? ['github' as const] : []),
-    ];
+    // Same condition that enables the provider in lib/better-auth/auth.ts
+    const socialProviders = process.env.GOOGLE_CLIENT_ID ? ['google' as const] : [];
     return (
-        <main className="auth-layout">
-            <section className="auth-left-section scrollbar-hide-default">
-                <Link href="/" className="auth-logo flex items-center gap-2">
-                    <Logo />
-                </Link>
-
-                <div className="pb-6 lg:pb-8 flex-1">
-                    <SocialProvidersProvider enabled={socialProviders}>{children}</SocialProvidersProvider>
-                </div>
+        <main className="grid min-h-dvh place-items-center bg-page px-6">
+            <section className="w-full max-w-sm">
+                <div className="mb-10"><Logo /></div>
+                <SocialProvidersProvider enabled={socialProviders}>{children}</SocialProvidersProvider>
             </section>
-            <section className="auth-right-section">
-                <div className="z-10 relative lg:mt-4 lg:mb-16">
-                    <p className="kicker text-brand-ink">{BRAND_FULL}</p>
-                    <blockquote className="auth-blockquote mt-3">
-                        Live prices, your watchlist, and an AI analyst team that debates every stock before it rates it.
-                    </blockquote>
-                </div>
-                <div className="relative flex-1" aria-hidden>
-                    <div className="auth-dashboard-preview absolute top-0">
-                        <ProductPreview />
-                    </div>
-                </div>
-            </section>
-
         </main>
     )
 }

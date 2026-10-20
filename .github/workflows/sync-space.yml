@@ -1,0 +1,43 @@
+# Copies the analyst service into its Hugging Face Space whenever it changes on main.
+# The repo is private, so the Space can no longer install it from GitHub itself.
+# Needs the repo secret HF_TOKEN (a Hugging Face token with write access to the Space)
+# and optionally the repo variable HF_SPACE (default Akumar90/openstock-analyst).
+name: Sync analyst Space
+
+on:
+  push:
+    branches: [main]
+    paths: ['analyst-service/**', '.github/workflows/sync-space.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: sync-space
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install huggingface_hub==0.30.2
+      - run: python analyst-service/space/build.py _space
+      - name: Upload to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE || 'Akumar90/openstock-analyst' }}
+        run: |
+          python - <<'EOF'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              repo_id=os.environ["HF_SPACE"],
+              repo_type="space",
+              folder_path="_space",
+              commit_message=f"Sync analyst-service from {os.environ['GITHUB_SHA'][:7]}",
+              # Remove files the package no longer has; keep the Space's own .gitattributes
+              delete_patterns=["openstock_analyst/**", "*.py", "requirements.txt"],
+          )
+          EOF

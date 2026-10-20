@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState } from "react";
-import { Github } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { signInWithSocial } from "@/lib/actions/auth.actions";
@@ -17,10 +16,9 @@ const GoogleIcon = () => (
 
 const PROVIDERS = [
     { id: 'google', label: 'Google', icon: <GoogleIcon /> },
-    { id: 'github', label: 'GitHub', icon: <Github className="size-5" /> },
 ] as const;
 
-type ProviderId = 'google' | 'github';
+type ProviderId = 'google';
 
 // The auth layout (a server component) knows which providers have keys and passes them down,
 // so pages never offer a button that can only fail.
@@ -34,7 +32,7 @@ const SocialAuthButtons = () => {
     const [pending, setPending] = useState<string | null>(null);
     const providers = PROVIDERS.filter((p) => enabled.includes(p.id));
 
-    const onClick = async (provider: 'google' | 'github') => {
+    const onClick = async (provider: ProviderId) => {
         setPending(provider);
         try {
             const result = await signInWithSocial(provider);
@@ -50,11 +48,13 @@ const SocialAuthButtons = () => {
         setPending(null);
     }
 
-    if (providers.length === 0) return null;
+    if (providers.length === 0) {
+        return <p className="rounded-lg border border-gray-600 p-4 text-sm text-gray-400">Sign-in isn&rsquo;t set up on this server yet: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.</p>;
+    }
 
     return (
         <div className="space-y-5 mb-5">
-            <div className={providers.length > 1 ? 'grid grid-cols-2 gap-3' : 'grid gap-3'}>
+            <div className="grid gap-3">
                 {providers.map(({ id, label, icon }) => (
                     <Button
                         key={id}
@@ -65,14 +65,9 @@ const SocialAuthButtons = () => {
                         className="h-12 border-gray-600 text-gray-400 text-base rounded-lg cursor-pointer"
                     >
                         {icon}
-                        {pending === id ? 'Redirecting' : label}
+                        {pending === id ? 'Redirecting' : `Continue with ${label}`}
                     </Button>
                 ))}
-            </div>
-            <div className="flex items-center gap-3 text-sm text-gray-500">
-                <span className="h-px flex-1 bg-gray-600" />
-                or
-                <span className="h-px flex-1 bg-gray-600" />
             </div>
         </div>
     );

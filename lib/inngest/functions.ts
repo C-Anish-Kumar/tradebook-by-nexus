@@ -12,7 +12,7 @@ export const sendSignUpEmail = inngest.createFunction(
     { id: 'sign-up-email', triggers: [{ event: 'app/user.created' }] },
     async ({ event, step }) => {
         const userProfile = `
-            - Country: ${event.data.country}
+            - Country: ${event.data.country ?? 'not given'}
         `
 
         const prompt = PERSONALIZED_WELCOME_EMAIL_PROMPT.replace('{{userProfile}}', userProfile)

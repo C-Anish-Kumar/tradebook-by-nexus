@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, BrainCircuit, Code2, Crosshair, Info, LayoutDashboard, LifeBuoy, LogOut, MessageSquare, Scale, Search, Star } from "lucide-react";
+import { BrainCircuit, Crosshair, LayoutDashboard, LogOut, MessageSquare, Scale, Search, Star } from "lucide-react";
 import { openSearch } from "@/components/SearchCommand";
 import { signOut } from "@/lib/actions/auth.actions";
 import { cn } from "@/lib/utils";
@@ -13,13 +13,6 @@ type SidebarProps = {
     user: User;
     watchlist: { symbol: string; company: string }[];
 };
-
-const RESOURCES = [
-    { href: '/help', label: 'Help', icon: LifeBuoy },
-    { href: '/api-docs', label: 'API docs', icon: Code2 },
-    { href: '/about', label: 'About', icon: Info },
-    { href: '/terms', label: 'Terms', icon: BookOpen },
-];
 
 const Sidebar = ({ user, watchlist }: SidebarProps) => {
     const pathname = usePathname();
@@ -86,15 +79,7 @@ const Sidebar = ({ user, watchlist }: SidebarProps) => {
                 )}
             </div>
 
-            <div className="mt-auto flex flex-col gap-0.5">
-                {RESOURCES.map(({ href, label, icon: Icon }) => (
-                    <Link key={href} href={href} className={cn('side-item h-8', pathname === href && 'is-active')}>
-                        <Icon /> {label}
-                    </Link>
-                ))}
-            </div>
-
-            <div className="flex items-center gap-2.5 border-t border-line pt-3 px-1">
+            <div className="mt-auto flex items-center gap-2.5 border-t border-line pt-3 px-1">
                 <Link href="/profile" className={cn('-m-1 flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] p-1 transition-colors hover:bg-white/5', pathname === '/profile' && 'bg-white/5')}>
                     <span className="grid size-8 flex-none place-items-center rounded-full bg-brand-soft text-[13px] font-bold text-brand-ink">
                         {user.name?.[0]?.toUpperCase() ?? '?'}

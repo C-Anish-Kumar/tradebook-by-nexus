@@ -30,16 +30,3 @@ export async function updateProfile(input: ProfileInput) {
         return { success: false, error: 'Couldn’t save your profile.' };
     }
 }
-
-export async function changePassword({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) {
-    try {
-        await auth.api.changePassword({
-            headers: await headers(),
-            body: { currentPassword, newPassword, revokeOtherSessions: true },
-        });
-        return { success: true };
-    } catch (e) {
-        console.error('Password change failed', e);
-        return { success: false, error: 'Current password is incorrect, or the new one is too short.' };
-    }
-}

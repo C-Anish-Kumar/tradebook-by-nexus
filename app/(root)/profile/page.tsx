@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { Bell, KeyRound, ShieldCheck, Star } from "lucide-react";
 import Panel from "@/components/Panel";
 import ProfileForm from "@/components/profile/ProfileForm";
-import PasswordForm from "@/components/profile/PasswordForm";
 import TelegramPanel from "@/components/profile/TelegramPanel";
 import { getTelegramStatus } from "@/lib/actions/notification.actions";
 import { auth, getSession } from "@/lib/better-auth/auth";
@@ -14,9 +13,8 @@ import { alertsEnabled } from "@/lib/market-data";
 export const metadata = { title: 'Profile | Apex Tradebook' };
 
 const METHOD_LABELS: Record<string, string> = {
-    credential: 'Email and password',
+    credential: 'Email and password (retired)',
     google: 'Google',
-    github: 'GitHub',
 };
 
 export default async function ProfilePage() {
@@ -88,11 +86,6 @@ export default async function ProfilePage() {
                         </ul>
                     </Panel>
 
-                    {linked.has('credential') && (
-                        <Panel title="Password" sub="Changing it signs out your other devices">
-                            <PasswordForm />
-                        </Panel>
-                    )}
                 </div>
             </div>
         </>
